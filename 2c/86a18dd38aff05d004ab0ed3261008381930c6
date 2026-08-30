@@ -1,0 +1,24 @@
+.railway/README.md
+  h_7abb91cb63daee 1-54
+.railway/railway.ts
+  h_7abb91cb63daee 1-26
+apps/web/vite.config.ts
+  h_7abb91cb63daee 121-131,177-179,185,189
+infra/railway/entrypoint.sh
+  h_7abb91cb63daee 1-54
+package.json
+  h_7abb91cb63daee 35
+pnpm-lock.yaml
+  h_7abb91cb63daee 24-26,2330-2334,6244-6247,7933-7937,11558-11561,16321-16322,18268-18273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2c86a18dd38aff05d004ab0ed3261008381930c6",
+  "prompts": {},
+  "humans": {
+    "h_7abb91cb63daee": {
+      "author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
