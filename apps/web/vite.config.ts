@@ -229,6 +229,17 @@ export default defineConfig(({ mode }) => {
   const rootEnv = loadEnv(mode, path.resolve(import.meta.dirname, "../.."), "");
   const api = process.env.API_PROXY_TARGET ?? rootEnv.API_PROXY_TARGET ?? "http://127.0.0.1:3100";
   const previewHost = process.env.RAKAZO_HOST ?? rootEnv.RAKAZO_HOST ?? "localhost";
+  // Some hosts probe the app with their own Host header (e.g. a platform health
+  // checker) and Vite answers 403 unless that hostname is allowed. Opt in explicitly
+  // rather than disabling the allowlist, which would expose the app to DNS rebinding.
+  const additionalAllowedHosts = (
+    process.env.RAKAZO_ADDITIONAL_ALLOWED_HOSTS ??
+    rootEnv.RAKAZO_ADDITIONAL_ALLOWED_HOSTS ??
+    ""
+  )
+    .split(",")
+    .map((host) => host.trim())
+    .filter(Boolean);
   const screenProxySecret = () =>
     resolveScreenProxySecret({
       ...process.env,
@@ -280,15 +291,19 @@ export default defineConfig(({ mode }) => {
       proxy: {
         "/api": { target: api, changeOrigin: true },
         "/rpc": { target: api, changeOrigin: true },
+        // Caddy maps /health to the API in the Compose deployment; single-origin
+        // hosts (e.g. Railway) have no Caddy, so the preview server must do it.
+        "/health": { target: api, changeOrigin: true },
       },
     },
     preview: {
       host: "0.0.0.0",
       port: Number(process.env.WEB_PORT ?? 5173),
-      allowedHosts: [previewHost],
+      allowedHosts: [previewHost, ...additionalAllowedHosts],
       proxy: {
         "/api": { target: api, changeOrigin: true },
         "/rpc": { target: api, changeOrigin: true },
+        "/health": { target: api, changeOrigin: true },
       },
     },
   };
