@@ -46,6 +46,9 @@ export function apiProxy(
     // matches other keys as prefixes, so this one is anchored to the exact path.
     [DEVICE_SOCKET]: options(true),
     "/rpc": options(false),
+    // Caddy maps /health to the API in the Compose deployment; single-origin hosts (e.g.
+    // Railway) have no Caddy, so the web server must do it.
+    "/health": options(false),
     // Native app domain association, served by the API from deployment settings.
     "/.well-known/apple-app-site-association": options(false),
     "/.well-known/assetlinks.json": options(false),
