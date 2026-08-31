@@ -1,0 +1,23 @@
+packages/adapters/src/pi-runtime-tool-schema.test.ts
+  s_e8144694370a18::t_e03000a2963fdd 1-9,11-31
+  s_e8144694370a18::t_1beb2212d0ec25 10
+packages/adapters/src/pi-runtime.ts
+  s_e8144694370a18::t_266f003153c4cb 743-757,808
+  s_e8144694370a18::t_2daa457ae1594d 871,884-896,900-901
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7d737a0ce6bcd276aedd1bd9fd7c898f27e8a0b1",
+  "prompts": {},
+  "sessions": {
+    "s_e8144694370a18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97e3b599-3681-4f01-b8b5-1d7bd43d86eb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
