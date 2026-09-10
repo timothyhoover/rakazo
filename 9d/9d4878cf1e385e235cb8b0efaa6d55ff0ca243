@@ -14,6 +14,8 @@ packages/adapters/src/pi-runtime-tool-schema.test.ts
 packages/adapters/src/pi-runtime.ts
   s_e8144694370a18::t_266f003153c4cb 1114-1122,1124-1128,1188
   s_e8144694370a18::t_2daa457ae1594d 1284-1296,1300-1301
+package.json
+  s_e8144694370a18::t_e0abc0ae9a1d33 40
 ---
 {
   "schema_version": "authorship/3.0.0",
