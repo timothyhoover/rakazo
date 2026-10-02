@@ -15,6 +15,7 @@ import {
   messagingChannelId,
   messagingChannelPrivacyBlock,
   messagingDmSurfaceNote,
+  messagingTrustedChannelBlock,
   nonOwnerChatPrivacyBlock,
   promptInvokesSkill,
   redactSecrets,
@@ -31,6 +32,7 @@ import {
   createPendingSteeringRun,
   effectiveMemoryScope,
   isPartialReplyClientNonce,
+  isTrustedMessagingChannel,
   loadRunHistoryMessages,
   loadRunTurnCheckpoint,
   parseComputerMode,
@@ -611,11 +613,17 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
           loadRunLoginRedactions(deps.prisma, deps.secretStore, run, run.id),
           loadRunCodeRedactions(deps.prisma, deps.secretStore, run, run.id),
         ]);
+        // A group whose members are all linked to the bot owner's own account
+        // has no outside reader: keep memory there and skip the privacy rules.
+        const trustedChannelRun =
+          messagingChannelRun &&
+          Boolean(channelId) &&
+          (await isTrustedMessagingChannel(deps.prisma, channelId!, bot.userId));
         // Team chat reaches people besides the owner, so their runs get a group channel's limits.
         const teamChatConversationId =
           run.trigger === "messaging" ? thread.externalConversationId : null;
         const nonOwnerChatRun =
-          messagingChannelRun ||
+          (messagingChannelRun && !trustedChannelRun) ||
           (teamChatConversationId
             ? !(await teamChatRunFromOwner(deps.prisma, {
                 externalConversationId: teamChatConversationId,
@@ -1145,11 +1153,13 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
         const messagingContext =
           [
             hasMessagingIdentity ? messagingDmSurfaceNote() : null,
-            messagingChannelRun
-              ? messagingChannelPrivacyBlock()
-              : nonOwnerChatRun
-                ? nonOwnerChatPrivacyBlock()
-                : null,
+            trustedChannelRun
+              ? messagingTrustedChannelBlock()
+              : messagingChannelRun
+                ? messagingChannelPrivacyBlock()
+                : nonOwnerChatRun
+                  ? nonOwnerChatPrivacyBlock()
+                  : null,
           ]
             .filter(Boolean)
             .join("\n\n") || undefined;

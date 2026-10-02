@@ -16,6 +16,7 @@ import {
   CrossSpaceCommunicationBlockedError,
   createThreadMessageInTransaction,
   crossSpaceCommunicationAllowed,
+  findTrustedMessagingChannelForBot,
   runAsSystem,
   SpaceDeletionInProgressError,
   THREAD_LOCK_TRANSACTION_OPTIONS,
@@ -139,10 +140,20 @@ async function mirrorRun(
       if (!progress) await mirrorChannelRun(deps, run, channelBlock);
       return;
     }
-  } else if (progress || (run.trigger !== "bot_message" && run.trigger !== "routine")) {
-    // Mirror inbound messaging runs and, once they end, delegated bot_message replies and
-    // scheduled routine runs (so a linked bot can text its updates).
-    // Do not push in-app user runs out to the linked chat.
+  } else if (progress) {
+    // Interim messages go out only for inbound messaging runs; the rest post once they end.
+    return;
+  } else if (run.trigger === "routine") {
+    // Scheduled updates go to the bot's trusted group when it has one (so
+    // everyone in it sees them), otherwise to the linked DM below.
+    const channel = await findTrustedMessagingChannelForBot(deps.prisma, run.botId);
+    if (channel) {
+      await mirrorChannelRun(deps, run, { channelId: channel.id });
+      return;
+    }
+  } else if (run.trigger !== "bot_message") {
+    // Mirror inbound messaging runs, delegated bot_message replies, and
+    // scheduled routine runs. Do not push in-app user runs out to the chat.
     return;
   }
 
@@ -239,7 +250,10 @@ export async function insertOutboundRows(
 async function mirrorChannelRun(
   deps: MessagingDeliveryDeps,
   run: { id: string; botId: string },
-  channelBlock: Extract<MessageBlock, { kind: "channel_message" }>,
+  channelBlock: Pick<
+    Extract<MessageBlock, { kind: "channel_message" }>,
+    "channelId" | "hop" | "transport"
+  >,
 ): Promise<void> {
   const identity = await deps.prisma.messagingIdentity.findUnique({
     where: { botId: run.botId },
