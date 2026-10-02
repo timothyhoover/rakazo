@@ -84,9 +84,10 @@ async function mirrorRun(deps: MessagingDeliveryDeps, runId: string): Promise<vo
       await mirrorChannelRun(deps, run, channelBlock);
       return;
     }
-  } else if (run.trigger !== "bot_message") {
-    // Mirror inbound messaging runs and delegated bot_message replies only.
-    // Do not push in-app user/routine runs out to the linked chat.
+  } else if (run.trigger !== "bot_message" && run.trigger !== "routine") {
+    // Mirror inbound messaging runs, delegated bot_message replies, and
+    // scheduled routine runs (so a linked bot can text its updates).
+    // Do not push in-app user runs out to the linked chat.
     return;
   }
 
