@@ -15,6 +15,7 @@ import {
   CrossSpaceCommunicationBlockedError,
   createThreadMessageInTransaction,
   crossSpaceCommunicationAllowed,
+  findTrustedMessagingChannelForBot,
   runAsSystem,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -105,10 +106,17 @@ async function mirrorRun(deps: MessagingDeliveryDeps, runId: string): Promise<vo
       await mirrorChannelRun(deps, run, channelBlock);
       return;
     }
-  } else if (run.trigger !== "bot_message" && run.trigger !== "routine") {
+  } else if (run.trigger === "routine") {
+    // Scheduled updates go to the bot's trusted group when it has one (so
+    // everyone in it sees them), otherwise to the linked DM below.
+    const channel = await findTrustedMessagingChannelForBot(deps.prisma, run.botId);
+    if (channel) {
+      await mirrorChannelRun(deps, run, { channelId: channel.id });
+      return;
+    }
+  } else if (run.trigger !== "bot_message") {
     // Mirror inbound messaging runs, delegated bot_message replies, and
-    // scheduled routine runs (so a linked bot can text its updates).
-    // Do not push in-app user runs out to the linked chat.
+    // scheduled routine runs. Do not push in-app user runs out to the chat.
     return;
   }
 
@@ -167,7 +175,10 @@ async function mirrorRun(deps: MessagingDeliveryDeps, runId: string): Promise<vo
 async function mirrorChannelRun(
   deps: MessagingDeliveryDeps,
   run: { id: string; botId: string },
-  channelBlock: Extract<MessageBlock, { kind: "channel_message" }>,
+  channelBlock: Pick<
+    Extract<MessageBlock, { kind: "channel_message" }>,
+    "channelId" | "hop" | "transport"
+  >,
 ): Promise<void> {
   const identity = await deps.prisma.messagingIdentity.findUnique({
     where: { botId: run.botId },

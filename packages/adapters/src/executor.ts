@@ -24,6 +24,7 @@ import {
   messagingChannelId,
   messagingChannelPrivacyBlock,
   messagingDmSurfaceNote,
+  messagingTrustedChannelBlock,
   nextFence,
   promptInvokesSkill,
   redactSecrets,
@@ -37,6 +38,7 @@ import {
   effectiveMemoryScope,
   isPartialReplyClientNonce,
   isTooManyDatabaseConnections,
+  isTrustedMessagingChannel,
   loadRunHistoryMessages,
   loadRunTurnCheckpoint,
   parseComputerMode,
@@ -570,6 +572,13 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
           loadRunLoginRedactions(deps.prisma, deps.secretStore, run, run.id),
           loadRunCodeRedactions(deps.prisma, deps.secretStore, run, run.id),
         ]);
+        // A group whose members are all linked to the bot owner's own account
+        // has no outside reader: keep memory there and skip the privacy rules.
+        const trustedChannelRun =
+          messagingChannelRun &&
+          Boolean(channelId) &&
+          (await isTrustedMessagingChannel(deps.prisma, channelId!, bot.userId));
+        const privateChannelRun = messagingChannelRun && !trustedChannelRun;
         const historySearchBeforeSeq =
           contextStrategy !== "current" && run.sourceMessageId
             ? (messages.find((message) => message.id === run.sourceMessageId)?.seq ??
@@ -695,7 +704,7 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
             summary: thread.historyCompactionSummary,
             historyCompactedUpToSeq: thread.historyCompactedUpToSeq,
           },
-          messagingChannelRun,
+          privateChannelRun,
           run.sourceMessageId,
         );
         const compactedHistory = selectCompactedHistory({
@@ -788,16 +797,16 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
         ] = await Promise.all([
           discoveredPromise,
           loadCurrentTurnImages(deps, turnBlocks, context),
-          messagingChannelRun
+          privateChannelRun
             ? Promise.resolve("")
             : loadAgentMemoryContext(deps.memory, bot.id, context),
-          messagingChannelRun
+          privateChannelRun
             ? Promise.resolve("")
             : loadAgentScratchpadContext(deps, {
                 spaceId: run.spaceId,
                 botId: bot.id,
               }),
-          messagingChannelRun || !deps.ticketBoardEnabled
+          privateChannelRun || !deps.ticketBoardEnabled
             ? Promise.resolve(undefined)
             : loadAgentTicketContext(deps, {
                 spaceId: run.spaceId,
@@ -805,7 +814,7 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
               }),
           recallPromise,
         ]);
-        const semanticMemoryEnabled = Boolean(semanticMemory) && !messagingChannelRun;
+        const semanticMemoryEnabled = Boolean(semanticMemory) && !privateChannelRun;
         let recalledMemory = "";
         let recallSucceeded = false;
         if (recalled) {
@@ -1116,7 +1125,14 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
             )
           : false;
         const messagingContext = hasMessagingIdentity
-          ? [messagingDmSurfaceNote(), messagingChannelRun ? messagingChannelPrivacyBlock() : null]
+          ? [
+              messagingDmSurfaceNote(),
+              trustedChannelRun
+                ? messagingTrustedChannelBlock()
+                : privateChannelRun
+                  ? messagingChannelPrivacyBlock()
+                  : null,
+            ]
               .filter(Boolean)
               .join("\n\n")
           : undefined;
@@ -1190,7 +1206,7 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
             mediaVideoEnabled: Boolean(deps.artifacts && mediaGeneration?.capabilities.video),
             cloudAgentEnabled: cloudAgentsEnabled(cloudAgent, run.spaceId),
             paymentWalletEnabled,
-            messagingChannelRun,
+            messagingChannelRun: privateChannelRun,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
             fleetManagement: bot.fleetManagement,
