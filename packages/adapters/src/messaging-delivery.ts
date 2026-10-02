@@ -139,9 +139,10 @@ async function mirrorRun(
       if (!progress) await mirrorChannelRun(deps, run, channelBlock);
       return;
     }
-  } else if (progress || run.trigger !== "bot_message") {
-    // Mirror inbound messaging runs and, once they end, delegated bot_message replies only.
-    // Do not push in-app user/routine runs out to the linked chat.
+  } else if (progress || (run.trigger !== "bot_message" && run.trigger !== "routine")) {
+    // Mirror inbound messaging runs and, once they end, delegated bot_message replies and
+    // scheduled routine runs (so a linked bot can text its updates).
+    // Do not push in-app user runs out to the linked chat.
     return;
   }
 
