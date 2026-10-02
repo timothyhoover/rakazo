@@ -68,6 +68,8 @@ function createDeps(overrides: {
   existingOutbox?: unknown;
   sendError?: Error;
   connectionStatus?: string | null;
+  /** The bot's approved group, and whose account its other member is linked to. */
+  group?: { otherMemberUserId: string };
 }) {
   const rows = [...(overrides.outboundRows ?? [])] as Array<Record<string, unknown>>;
   const { messaging, sendToThread, openDirectThread } = createFakeSurface(overrides.sendError);
@@ -89,6 +91,11 @@ function createDeps(overrides: {
     },
     messagingIdentity: {
       findUnique: vi.fn(async () => identityRow),
+      findMany: vi.fn(async () =>
+        overrides.group
+          ? [{ userId: identity.userId }, { userId: overrides.group.otherMemberUserId }]
+          : [],
+      ),
       update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
         if (identityRow && typeof data.dmThreadId === "string") {
           identityRow.dmThreadId = data.dmThreadId;
@@ -96,6 +103,26 @@ function createDeps(overrides: {
         return identityRow;
       }),
     },
+    messagingChannel: {
+      findUnique: vi.fn(async () =>
+        overrides.group
+          ? {
+              id: "ch-1",
+              provider: "sendblue",
+              threadId: "sendblue:group-1",
+              name: "Family",
+              members: [{ address: identity.address }, { address: "+15557654321" }],
+            }
+          : null,
+      ),
+    },
+    messagingChannelMember: {
+      // Only the bot's own memberships; peer lookups (with NOT) find nobody.
+      findMany: vi.fn(async ({ where }: { where: { NOT?: unknown } }) =>
+        overrides.group && !where.NOT ? [{ channelId: "ch-1" }] : [],
+      ),
+    },
+    user: { findUnique: vi.fn(async () => ({ name: "Alice Owner" })) },
     agentConnection: {
       findUnique: vi.fn(async () =>
         overrides.connectionStatus === null
@@ -271,6 +298,30 @@ describe("deliverMessagingOutbound", () => {
 
   it("mirrors scheduled routine replies to the linked DM", async () => {
     const deps = createDeps({ run: { ...messagingRun, trigger: "routine" } });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+    expect(deps.sendToThread).toHaveBeenCalledWith(
+      { threadId: "sendblue:dm-1", body: "Hello from your bot" },
+      context,
+    );
+  });
+
+  it("posts scheduled routine replies to the bot's trusted group", async () => {
+    const deps = createDeps({
+      run: { ...messagingRun, trigger: "routine" },
+      group: { otherMemberUserId: identity.userId },
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+    expect(deps.sendToThread).toHaveBeenCalledWith(
+      { threadId: "sendblue:group-1", body: "Alice's agent: Hello from your bot" },
+      context,
+    );
+  });
+
+  it("keeps scheduled routine replies out of a group with someone else in it", async () => {
+    const deps = createDeps({
+      run: { ...messagingRun, trigger: "routine" },
+      group: { otherMemberUserId: "user-2" },
+    });
     await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
     expect(deps.sendToThread).toHaveBeenCalledWith(
       { threadId: "sendblue:dm-1", body: "Hello from your bot" },

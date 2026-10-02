@@ -174,6 +174,62 @@ function titleCase(value: string): string {
   return value ? value[0]!.toUpperCase() + value.slice(1) : value;
 }
 
+/**
+ * A group is trusted for an owner when every current member's address is
+ * linked to that owner's own account (e.g. a family where each person's
+ * number is linked to one of the owner's bots). Nobody outside the account
+ * reads the group, so the owner's bots keep their memory there. Any unlinked
+ * or foreign member, or an unknown roster, makes it untrusted.
+ */
+export async function isTrustedMessagingChannel(
+  prisma: PrismaClient,
+  channelId: string,
+  ownerUserId: string,
+): Promise<boolean> {
+  const channel = await prisma.messagingChannel.findUnique({
+    where: { id: channelId },
+    select: {
+      provider: true,
+      members: { where: { status: { not: "left" } }, select: { address: true } },
+    },
+  });
+  if (!channel || channel.members.length === 0) return false;
+  const identities = await prisma.messagingIdentity.findMany({
+    where: {
+      provider: channel.provider,
+      address: { in: channel.members.map((member) => member.address) },
+    },
+    select: { userId: true },
+  });
+  return (
+    identities.length === channel.members.length &&
+    identities.every((identity) => identity.userId === ownerUserId)
+  );
+}
+
+/** The most recently active trusted group this bot has joined, if any. */
+export async function findTrustedMessagingChannelForBot(
+  prisma: PrismaClient,
+  botId: string,
+): Promise<{ id: string } | null> {
+  const identity = await prisma.messagingIdentity.findUnique({
+    where: { botId },
+    select: { id: true, userId: true },
+  });
+  if (!identity) return null;
+  const memberships = await prisma.messagingChannelMember.findMany({
+    where: { identityId: identity.id, status: "approved" },
+    orderBy: { updatedAt: "desc" },
+    select: { channelId: true },
+  });
+  for (const { channelId } of memberships) {
+    if (await isTrustedMessagingChannel(prisma, channelId, identity.userId)) {
+      return { id: channelId };
+    }
+  }
+  return null;
+}
+
 export const MESSAGING_LINK_CODE_TTL_MS = 10 * 60 * 1000;
 
 /** No ambiguous glyphs (0/O, 1/I/L, U/V) — the code is typed on a phone. */

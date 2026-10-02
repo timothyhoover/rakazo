@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "./client.js";
-import { provisionMessagingIdentity } from "./messaging.js";
+import { isTrustedMessagingChannel, provisionMessagingIdentity } from "./messaging.js";
 
 describe("provisionMessagingIdentity", () => {
   it("returns the existing identity without creating anything when already provisioned", async () => {
@@ -266,5 +266,44 @@ describe("messaging identity isolation", () => {
     f.prisma.user.create.mockRejectedValueOnce(new Error("database unavailable"));
     await expect(f.provision("sendblue", "+15550001111")).rejects.toThrow("database unavailable");
     expect(f.prisma.messagingIdentity.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("isTrustedMessagingChannel", () => {
+  function prismaFor(members: string[], linked: Array<{ userId: string }>) {
+    return {
+      messagingChannel: {
+        findUnique: vi.fn(async () => ({
+          provider: "sendblue",
+          members: members.map((address) => ({ address })),
+        })),
+      },
+      messagingIdentity: { findMany: vi.fn(async () => linked) },
+    } as unknown as PrismaClient;
+  }
+
+  it("trusts a group whose members are all linked to the owner", async () => {
+    const prisma = prismaFor(
+      ["+15550000001", "+15550000002"],
+      [{ userId: "owner" }, { userId: "owner" }],
+    );
+    expect(await isTrustedMessagingChannel(prisma, "ch-1", "owner")).toBe(true);
+  });
+
+  it("distrusts a group with an unlinked member", async () => {
+    const prisma = prismaFor(["+15550000001", "+15550000002"], [{ userId: "owner" }]);
+    expect(await isTrustedMessagingChannel(prisma, "ch-1", "owner")).toBe(false);
+  });
+
+  it("distrusts a group with a member linked to someone else", async () => {
+    const prisma = prismaFor(
+      ["+15550000001", "+15550000002"],
+      [{ userId: "owner" }, { userId: "other" }],
+    );
+    expect(await isTrustedMessagingChannel(prisma, "ch-1", "owner")).toBe(false);
+  });
+
+  it("distrusts a group with no known members", async () => {
+    expect(await isTrustedMessagingChannel(prismaFor([], []), "ch-1", "owner")).toBe(false);
   });
 });
