@@ -19,6 +19,15 @@ export function messagingChannelPrivacyBlock(): string {
   ].join("\n");
 }
 
+/** Trusted groups: every member is linked to the owner's own account. */
+export function messagingTrustedChannelBlock(): string {
+  return [
+    "You are posting to a group chat whose members are all linked to the owner's own account (for example, family).",
+    "You may use and discuss the owner's information and your memory here.",
+    "Reply only when you add value to the group; otherwise finish silently without posting.",
+  ].join("\n");
+}
+
 export function messagingChannelId(sourceBlocks: MessageBlock[] | undefined): string | undefined {
   return sourceBlocks?.find((block) => block.kind === "channel_message")?.channelId;
 }

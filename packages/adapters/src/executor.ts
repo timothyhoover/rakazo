@@ -70,6 +70,7 @@ import {
   messagingChannelId,
   messagingChannelPrivacyBlock,
   messagingDmSurfaceNote,
+  messagingTrustedChannelBlock,
   nextCronDateAcross,
   nextFence,
   planActionGate,
@@ -101,6 +102,7 @@ import {
   findModelCredential,
   InvalidSpaceNameError,
   isTooManyDatabaseConnections,
+  isTrustedMessagingChannel,
   loadRunHistoryMessages,
   type McpServer,
   type Prisma,
@@ -3330,6 +3332,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
             },
           }),
         ]);
+        // A group whose members are all linked to the bot owner's own account
+        // has no outside reader: keep memory there and skip the privacy rules.
+        const trustedChannelRun =
+          messagingChannelRun &&
+          Boolean(channelId) &&
+          (await isTrustedMessagingChannel(deps.prisma, channelId!, bot.userId));
+        const privateChannelRun = messagingChannelRun && !trustedChannelRun;
         const agentEnvironment = decryptAgentEnvironment(agentSecretRows, deps.secretStore);
         runSecrets.push(...Object.values(agentEnvironment));
         const agentEnvironmentInstruction = formatAgentEnvironmentInstruction(agentEnvironment);
@@ -3412,7 +3421,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             summary: thread.historyCompactionSummary,
             historyCompactedUpToSeq: thread.historyCompactedUpToSeq,
           },
-          messagingChannelRun,
+          privateChannelRun,
         );
         const compactedHistory = selectCompactedHistory({
           messages: threadContext.messages,
@@ -3471,10 +3480,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
           await Promise.all([
             discoveredPromise,
             loadCurrentTurnImages(deps, turnBlocks, context),
-            messagingChannelRun
+            privateChannelRun
               ? Promise.resolve("")
               : loadAgentMemoryContext(deps.memory, bot.id, context),
-            messagingChannelRun
+            privateChannelRun
               ? Promise.resolve("")
               : loadAgentScratchpadContext(deps, {
                   spaceId: run.spaceId,
@@ -3482,7 +3491,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 }),
             recallPromise,
           ]);
-        const semanticMemoryEnabled = Boolean(semanticMemory) && !messagingChannelRun;
+        const semanticMemoryEnabled = Boolean(semanticMemory) && !privateChannelRun;
         let recalledMemory = "";
         let recallSucceeded = false;
         if (recalled) {
@@ -3634,7 +3643,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ? await deps.messaging.hasIdentity(bot.id)
           : false;
         const messagingContext = hasMessagingIdentity
-          ? [messagingDmSurfaceNote(), messagingChannelRun ? messagingChannelPrivacyBlock() : null]
+          ? [
+              messagingDmSurfaceNote(),
+              trustedChannelRun
+                ? messagingTrustedChannelBlock()
+                : privateChannelRun
+                  ? messagingChannelPrivacyBlock()
+                  : null,
+            ]
               .filter(Boolean)
               .join("\n\n")
           : undefined;
@@ -3676,7 +3692,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             trigger: run.trigger,
             semanticMemoryEnabled,
             cloudAgentEnabled: cloudAgentsEnabled(cloudAgent, run.spaceId),
-            messagingChannelRun,
+            messagingChannelRun: privateChannelRun,
             voiceCall,
           }),
           // Cross-owner agent connections only exist for chat-linked bots.
