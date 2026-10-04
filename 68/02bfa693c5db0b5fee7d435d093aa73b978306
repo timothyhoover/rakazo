@@ -1,0 +1,21 @@
+packages/adapters/src/composio-connector.test.ts
+  s_2bfbf56fed595e::t_1817f963525b65 11,224-244
+packages/adapters/src/composio-connector.ts
+  s_2bfbf56fed595e::t_be734744e8888a 386-389,775-795
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6802bfa693c5db0b5fee7d435d093aa73b978306",
+  "prompts": {},
+  "sessions": {
+    "s_2bfbf56fed595e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6d5b7a4-2b7a-4fb6-8d93-eec20ff4ef77",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
