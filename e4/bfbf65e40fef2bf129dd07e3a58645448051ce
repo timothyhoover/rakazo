@@ -1,0 +1,65 @@
+packages/adapters/src/thread-artifacts.test.ts
+  s_23d5246ba086ae::t_e9ee165c5e97e6 17-41,199
+  s_23d5246ba086ae::t_f03c1253073d57 194
+packages/adapters/src/executor-lazy-computer.test.ts
+  s_23d5246ba086ae::t_3746e788f11711 1-203
+  s_23d5246ba086ae::t_327a3841945547 204-217
+apps/api/src/router.ts
+  s_23d5246ba086ae::t_5063c9d99ce44a 2910
+apps/web/src/pages/Shell.tsx
+  s_23d5246ba086ae::t_e861fefd0c5148 2636-2638,2640
+docs/self-host-sandbox-providers.md
+  s_23d5246ba086ae::t_ea8e9dd54bc1c8 60-78
+package.json
+  s_23d5246ba086ae::t_91f52211bdcfc6 20
+packages/adapter-kit/src/interfaces.ts
+  s_23d5246ba086ae::t_59f092ba95a8df 101-105
+packages/adapters/src/cli/build-e2b-template.ts
+  s_23d5246ba086ae::t_66dd4ea1cecf93 1-14
+packages/adapters/src/computer-idle.test.ts
+  s_23d5246ba086ae::t_b01ef902652e8e 12,15,156,247-341,563,581
+packages/adapters/src/computer-idle.ts
+  s_23d5246ba086ae::t_4678cb1a2c86f9 16-23,185-188,191-197,199-204,237-255,319-320,357,396,402-407,412
+packages/adapters/src/computer-lifecycle.test.ts
+  s_23d5246ba086ae::t_a9e8bf2b8c8358 1008-1013
+packages/adapters/src/computer-lifecycle.ts
+  s_23d5246ba086ae::t_5af0bc3a7f6dca 330-334
+packages/adapters/src/e2b-sandbox.test.ts
+  s_23d5246ba086ae::t_3394dfb83da8a4 2,6-7,139-192
+packages/adapters/src/e2b-sandbox.ts
+  s_23d5246ba086ae::t_0ffda37ec5281e 19,26,33,66-72,186,401-413
+packages/adapters/src/e2b-template.test.ts
+  s_23d5246ba086ae::t_a95eb246179bca 1-28
+packages/adapters/src/e2b-template.ts
+  s_23d5246ba086ae::t_44449fade0f6e0 1-40
+packages/adapters/src/executor.ts
+  s_23d5246ba086ae::t_a47fcd6199add8 289,3604-3606,3608-3611,3613-3617,3638,4517,4535,4555,4572,4618,4648,4670,4730,4815,4897,4933,5028,6261,6626,6636,6778-6779
+packages/adapters/src/host-aware-sandbox.test.ts
+  s_23d5246ba086ae::t_535a6c02f28e45 115-132
+packages/adapters/src/host-aware-sandbox.ts
+  s_23d5246ba086ae::t_12b9b82ee14e89 82-86
+packages/adapters/src/run-computer.ts
+  s_23d5246ba086ae::t_7a4fd6db2edacc 1-39
+packages/adapters/src/thread-artifacts.ts
+  s_23d5246ba086ae::t_b2c2a0c8ceb32d 122-123
+packages/db/prisma/migrations/20261017120000_computer_running_since/migration.sql
+  s_23d5246ba086ae::t_4cba3735b3aa6e 1-4
+packages/db/prisma/schema.prisma
+  s_23d5246ba086ae::t_d90569b84f68e1 945-946
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4bfbf65e40fef2bf129dd07e3a58645448051ce",
+  "prompts": {},
+  "sessions": {
+    "s_23d5246ba086ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b5e4d13-17bc-42b7-bf35-e6d781694216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
