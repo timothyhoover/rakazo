@@ -14,6 +14,31 @@ import {
 } from "./thread-artifacts.js";
 
 describe("current-turn thread files", () => {
+  it("does not start the computer for a turn without attachments", async () => {
+    const computer = vi.fn(async () => ({}) as ComputerRef);
+    const files = await materializeCurrentTurnFiles(
+      {
+        prisma: {} as PrismaClient,
+        artifacts: {} as ArtifactStore,
+        sandbox: {} as SandboxProvider,
+      },
+      [{ kind: "text", text: "Sweep the inbox" }],
+      {
+        context: {
+          operationId: "run-1",
+          traceId: "run-1",
+          spaceId: "space-1",
+          userId: "user-1",
+          botId: "bot-1",
+          signal: new AbortController().signal,
+        },
+        computer,
+        computerMode: "team",
+      },
+    );
+    expect(files).toEqual([]);
+    expect(computer).not.toHaveBeenCalled();
+  });
   it("removes stored bytes when artifact metadata cannot be created", async () => {
     const remove = vi.fn().mockResolvedValue(undefined);
     const failure = new Error("database unavailable");
@@ -99,7 +124,7 @@ describe("current-turn thread files", () => {
         sandbox: { writeFile } as unknown as SandboxProvider,
       },
       blocks,
-      { context, computer, computerMode: "team", markWorkspaceDirty },
+      { context, computer: async () => computer, computerMode: "team", markWorkspaceDirty },
     );
 
     expect(get).toHaveBeenCalledWith("stored-1", context);
@@ -166,12 +191,12 @@ describe("current-turn thread files", () => {
           botId: "bot-1",
           signal: new AbortController().signal,
         },
-        computer: {
+        computer: async () => ({
           id: "computer-1",
           botId: "bot-1",
           kind: "fake",
           providerRef: "fake-1",
-        },
+        }),
         computerMode: "team",
       },
     );

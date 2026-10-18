@@ -119,7 +119,8 @@ export async function materializeCurrentTurnFiles(
   blocks: MessageBlock[] | undefined,
   input: {
     context: AdapterContext & { botId: string };
-    computer: ComputerRef;
+    /** Starts the computer; called only when there is a file to copy onto it. */
+    computer: () => Promise<ComputerRef>;
     computerMode: ComputerMode;
     markWorkspaceDirty?: () => void;
   },
@@ -155,7 +156,7 @@ export async function materializeCurrentTurnFiles(
     const relativePath = `attachments/${row.id}${attachmentExtensionForMimeType(row.mimeType)}`;
     input.markWorkspaceDirty?.();
     await deps.sandbox.writeFile(
-      input.computer,
+      await input.computer(),
       {
         path: resolveBotWorkspacePath(input.computerMode, input.context.botId, relativePath),
         content: bytes,

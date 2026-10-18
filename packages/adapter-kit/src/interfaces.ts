@@ -98,6 +98,11 @@ export interface SandboxProvider {
     },
     context: AdapterContext,
   ): Promise<ComputerRef>;
+  /**
+   * The kind provision() would return now, without starting anything. Only providers that
+   * choose between kinds at provision time implement it.
+   */
+  provisionKind?(): Promise<ComputerRef["kind"]>;
   /** Perform idempotent provider setup after the lifecycle has captured the reference. */
   prepare(computer: ComputerRef, context: AdapterContext): Promise<void>;
   execute(
