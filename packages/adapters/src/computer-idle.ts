@@ -205,9 +205,7 @@ export async function touchRunningComputer(
     controlLeaseExpiresAt: computer.controlLeaseExpiresAt ?? null,
   });
   if (activeLimitReached(computer.runningSince) && !activeControl) {
-    if (computerIdleSleepEnabled()) {
-      void deps.jobs.enqueue(computerSleepJob(computer.id, new Date(Date.now())));
-    }
+    void deps.jobs.enqueue(computerSleepJob(computer.id, new Date(Date.now())));
     return;
   }
   scheduleComputerSleep(deps.jobs, computer.id);

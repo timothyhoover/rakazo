@@ -5024,7 +5024,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   : null;
             return computerScreenToolResult(async () => {
               const result = tool
-                ? redactConnectorPayload(await tool(browser, await runComputer.get(), context, args), redactions())
+                ? redactConnectorPayload(
+                    await tool(browser, await runComputer.get(), context, args),
+                    redactions(),
+                  )
                 : await browserActFromTool(browser, await runComputer.get(), context, args, {
                     redactions,
                     resolveSecretFill: async (step) => {
