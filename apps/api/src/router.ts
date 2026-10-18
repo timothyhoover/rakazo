@@ -2908,6 +2908,9 @@ export function createRouter(deps: RouterDeps) {
               providerRef: bot.computer.providerRef,
               kind: bot.computer.kind,
               runningSince: bot.computer.runningSince,
+              controlHolder: bot.computer.controlHolder,
+              controlLeaseId: bot.computer.controlLeaseId,
+              controlLeaseExpiresAt: bot.computer.controlLeaseExpiresAt,
             },
           ).catch(() => undefined);
         }
