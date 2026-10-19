@@ -1,0 +1,21 @@
+packages/adapters/src/e2b-sandbox.test.ts
+  s_23d5246ba086ae::t_12a6c7b8affe8c 869-886,905
+packages/adapters/src/e2b-sandbox.ts
+  s_23d5246ba086ae::t_bc5a95fa32894d 480-482
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f7655b811551a061f288c3f2f40d29282e3ca03",
+  "prompts": {},
+  "sessions": {
+    "s_23d5246ba086ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b5e4d13-17bc-42b7-bf35-e6d781694216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
