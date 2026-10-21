@@ -38,10 +38,12 @@ import {
   effectiveMemoryScope,
   isPartialReplyClientNonce,
   isTooManyDatabaseConnections,
+  findTrustedMessagingChannelForBot,
   isTrustedMessagingChannel,
   loadRunHistoryMessages,
   loadRunTurnCheckpoint,
   parseComputerMode,
+  previousRoutineReplySeq,
   RunHistoryWriteError,
   readRunTimingFields,
   recordUsage,
@@ -677,6 +679,11 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
           { spaceId: run.spaceId, bot },
           messages,
         );
+        const routineSinceSeq =
+          run.trigger === "routine" &&
+          (await findTrustedMessagingChannelForBot(deps.prisma, bot.id))
+            ? await previousRoutineReplySeq(deps.prisma, run)
+            : undefined;
         const threadContext = threadContextForRun(
           run.trigger,
           {
@@ -706,6 +713,7 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
           },
           privateChannelRun,
           run.sourceMessageId,
+          routineSinceSeq,
         );
         const compactedHistory = selectCompactedHistory({
           messages: threadContext.messages,

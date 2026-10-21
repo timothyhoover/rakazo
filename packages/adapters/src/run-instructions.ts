@@ -406,6 +406,7 @@ export function threadContextForRun<T extends { id?: string; role: string }>(
   },
   messagingChannelRun: boolean,
   sourceMessageId?: string | null,
+  routineSinceSeq?: number,
 ) {
   // The current reaction is supplied with its target in the prompt, once.
   if (trigger === "reaction" && sourceMessageId) {
@@ -416,9 +417,16 @@ export function threadContextForRun<T extends { id?: string; role: string }>(
   }
   // Routine runs stay isolated from thread history. The creation intro does
   // too: a message that arrives during it waits and is answered afterward.
+  // A trusted-group routine is the exception: it sees what was said since its
+  // last update, so corrections given in the group are not lost overnight.
   if (!runReadsThreadHistory(trigger)) {
     return {
-      messages: [] as T[],
+      messages:
+        trigger === "routine" && routineSinceSeq !== undefined
+          ? context.messages.filter(
+              (message) => ((message as { seq?: number }).seq ?? -1) > routineSinceSeq,
+            )
+          : ([] as T[]),
       summary: null,
       historyCompactedUpToSeq: null,
       includeSemanticRecall: false,

@@ -16,6 +16,7 @@ import {
   createThreadMessageInTransaction,
   crossSpaceCommunicationAllowed,
   findTrustedMessagingChannelForBot,
+  isTrustedMessagingChannel,
   runAsSystem,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -194,6 +195,8 @@ async function mirrorChannelRun(
   });
   const firstName = owner?.name.trim().split(/\s+/)[0] || "Owner";
   const fromLabel = `${firstName}'s agent`;
+  // Everyone in a trusted group already knows the bot; the prefix is only noise.
+  const trusted = await isTrustedMessagingChannel(deps.prisma, channel.id, identity.userId);
 
   const replies = await deps.prisma.message.findMany({
     select: { id: true, blocks: true },
@@ -220,7 +223,7 @@ async function mirrorChannelRun(
       idempotencyKey: `msg:${message.id}`,
       kind: "group",
       threadId: channel.threadId,
-      body: `${fromLabel}: ${text}`,
+      body: trusted ? text : `${fromLabel}: ${text}`,
       sourceMessageId: message.id,
     })),
     skipDuplicates: true,
