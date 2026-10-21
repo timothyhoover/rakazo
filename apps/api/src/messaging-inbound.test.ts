@@ -110,6 +110,8 @@ function createDeps(
         },
       ),
       update: vi.fn(async () => identity),
+      // No older number of the same owner in the group: label by owner name.
+      findFirst: vi.fn(async () => null),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
         const created = { id: "mi-linked", ...data };
         createdIdentities.push(created);
@@ -817,6 +819,27 @@ describe("createMessagingInboundHandler channel routing", () => {
     await handle(groupEvent);
 
     expect(deps.outboundRows.filter((row) => row.kind === "intro")).toHaveLength(0);
+  });
+
+  it("labels a second number on the owner's account by its line's bot name", async () => {
+    const senderMember = {
+      id: "cm-1",
+      channelId: "ch-1",
+      address: "+15551111111",
+      identityId: "mi-1",
+      status: "approved",
+    };
+    const deps = createDeps({ members: [senderMember] });
+    // The owner's own number joined the group first.
+    deps.prisma.messagingIdentity.findFirst = vi.fn(async () => ({ id: "mi-owner" }));
+    deps.prisma.bot.findUnique = vi.fn(async () => ({ name: "Sam" }));
+    const handle = createMessagingInboundHandler(deps);
+    await handle(groupEvent);
+
+    const [input] = deps.sendUserMessage.mock.calls[0] as [
+      { blocks: Array<{ fromLabel: string }> },
+    ];
+    expect(input.blocks[0]!.fromLabel).toBe("Sam");
   });
 
   it("fans an approved member's message out to every approved member bot", async () => {

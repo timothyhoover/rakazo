@@ -1175,6 +1175,24 @@ describe("createRunExecutor", () => {
     });
   });
 
+  it("gives a trusted-group routine only the messages since its last update", () => {
+    const threadContext = {
+      messages: [
+        { seq: 3, role: "assistant", content: "Yesterday's update" },
+        { seq: 4, role: "user", content: "$100 coming back for dining" },
+      ],
+      summary: "Older context",
+      historyCompactedUpToSeq: 2,
+    };
+
+    expect(threadContextForRun("routine", threadContext, false, 3)).toEqual({
+      messages: [{ seq: 4, role: "user", content: "$100 coming back for dining" }],
+      summary: null,
+      historyCompactedUpToSeq: null,
+      includeSemanticRecall: false,
+    });
+  });
+
   it("deactivates one-shot routines after wake without scheduling another wakeup", async () => {
     const scheduledAt = new Date(Date.now() - 1_000);
     const enqueue = vi.fn(async () => undefined);

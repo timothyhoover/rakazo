@@ -305,14 +305,14 @@ describe("deliverMessagingOutbound", () => {
     );
   });
 
-  it("posts scheduled routine replies to the bot's trusted group", async () => {
+  it("posts scheduled routine replies to the bot's trusted group without the agent prefix", async () => {
     const deps = createDeps({
       run: { ...messagingRun, trigger: "routine" },
       group: { otherMemberUserId: identity.userId },
     });
     await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
     expect(deps.sendToThread).toHaveBeenCalledWith(
-      { threadId: "sendblue:group-1", body: "Alice's agent: Hello from your bot" },
+      { threadId: "sendblue:group-1", body: "Hello from your bot" },
       context,
     );
   });
@@ -733,6 +733,8 @@ function createChannelDeps(
         threadId: "sendblue:grp-1",
         name: "Family",
         introPostedAt: null,
+        // No roster, so the group is untrusted and keeps the owner attribution.
+        members: [],
       })),
     },
     messagingChannelMember: {

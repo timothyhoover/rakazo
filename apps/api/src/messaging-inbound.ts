@@ -579,7 +579,7 @@ async function handleChannelEvent(
     ? await deps.prisma.messagingIdentity.findUnique({ where: { id: senderMember.identityId } })
     : null;
   const fromLabel = senderIdentity
-    ? await ownerFirstName(deps.prisma, senderIdentity.userId, event.from)
+    ? await channelSenderLabel(deps.prisma, channel.id, senderIdentity, event.from)
     : event.from;
 
   const approved = await deps.prisma.messagingChannelMember.findMany({
@@ -668,6 +668,34 @@ async function inviteMember(
   await deps.jobs.enqueue(messagingDeliverJob()).catch((error) => {
     getLogger().error("messaging invite enqueue error", error);
   });
+}
+
+/**
+ * The owner's first name, unless the owner has an older number in this group:
+ * then the sender is someone else on the owner's account (e.g. a spouse's
+ * line), and the line's bot name tells them apart.
+ */
+async function channelSenderLabel(
+  prisma: PrismaClient,
+  channelId: string,
+  sender: { id: string; userId: string; botId: string; createdAt: Date },
+  fallback: string,
+): Promise<string> {
+  const members = await prisma.messagingChannelMember.findMany({
+    where: { channelId, status: "approved", identityId: { not: null } },
+    select: { identityId: true },
+  });
+  const olderSibling = await prisma.messagingIdentity.findFirst({
+    where: {
+      id: { in: members.map((member) => member.identityId!), not: sender.id },
+      userId: sender.userId,
+      createdAt: { lt: sender.createdAt },
+    },
+    select: { id: true },
+  });
+  if (!olderSibling) return ownerFirstName(prisma, sender.userId, fallback);
+  const bot = await prisma.bot.findUnique({ where: { id: sender.botId }, select: { name: true } });
+  return bot?.name.trim() ? sanitizeMessagingLabel(bot.name.trim()) : fallback;
 }
 
 async function ownerFirstName(

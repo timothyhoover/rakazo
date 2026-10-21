@@ -100,6 +100,7 @@ import {
   effectiveMemoryScope,
   findDefaultModelCredential,
   findModelCredential,
+  findTrustedMessagingChannelForBot,
   InvalidSpaceNameError,
   isTooManyDatabaseConnections,
   isTrustedMessagingChannel,
@@ -108,6 +109,7 @@ import {
   type Prisma,
   type PrismaClient,
   parseComputerMode,
+  previousRoutineReplySeq,
   retireModelCredential,
   SpaceLimitError,
   type ThreadEvents,
@@ -3407,6 +3409,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const discoveredPromise = deps.connector
           ? deps.connector.discoverTools(context)
           : Promise.resolve([]);
+        const routineSinceSeq =
+          run.trigger === "routine" &&
+          (await findTrustedMessagingChannelForBot(deps.prisma, bot.id))
+            ? await previousRoutineReplySeq(deps.prisma, run)
+            : undefined;
         const threadContext = threadContextForRun(
           run.trigger,
           {
@@ -3423,6 +3430,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             historyCompactedUpToSeq: thread.historyCompactedUpToSeq,
           },
           privateChannelRun,
+          routineSinceSeq,
         );
         const compactedHistory = selectCompactedHistory({
           messages: threadContext.messages,
@@ -7158,12 +7166,20 @@ export function threadContextForRun<T>(
     historyCompactedUpToSeq: number | null;
   },
   messagingChannelRun: boolean,
+  routineSinceSeq?: number,
 ) {
   // Routine runs stay isolated from thread history. The creation intro does
   // too: a message that arrives during it waits and is answered afterward.
+  // A trusted-group routine is the exception: it sees what was said since its
+  // last update, so corrections given in the group are not lost overnight.
   if (trigger === "created" || trigger === "routine") {
     return {
-      messages: [] as T[],
+      messages:
+        trigger === "routine" && routineSinceSeq !== undefined
+          ? context.messages.filter(
+              (message) => ((message as { seq?: number }).seq ?? -1) > routineSinceSeq,
+            )
+          : ([] as T[]),
       summary: null,
       historyCompactedUpToSeq: null,
       includeSemanticRecall: false,

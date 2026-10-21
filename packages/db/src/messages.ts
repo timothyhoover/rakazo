@@ -40,6 +40,29 @@ export function loadRunHistoryMessages(
   });
 }
 
+/**
+ * Seq of the last reply an earlier routine run posted in this thread, or -1
+ * when there is none. Marks where "since the last scheduled update" starts.
+ */
+export async function previousRoutineReplySeq(
+  prisma: PrismaClient,
+  run: { id: string; threadId: string },
+): Promise<number> {
+  const routineRuns = await prisma.run.findMany({
+    where: { threadId: run.threadId, trigger: "routine", id: { not: run.id } },
+    orderBy: { createdAt: "desc" },
+    take: 5,
+    select: { id: true },
+  });
+  if (routineRuns.length === 0) return -1;
+  const reply = await prisma.message.findFirst({
+    where: { threadId: run.threadId, role: "bot", runId: { in: routineRuns.map((r) => r.id) } },
+    orderBy: { seq: "desc" },
+    select: { seq: true },
+  });
+  return reply?.seq ?? -1;
+}
+
 export interface CreateThreadMessageInput {
   threadId: string;
   role: "user" | "bot" | "system";
