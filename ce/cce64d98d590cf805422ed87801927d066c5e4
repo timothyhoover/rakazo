@@ -1,0 +1,31 @@
+apps/api/src/messaging-inbound.test.ts
+  s_982aef1b1faf20::t_5e1eae363b4825 113-114,824-844
+apps/api/src/messaging-inbound.ts
+  s_982aef1b1faf20::t_b407cb22b0b6e0 582,673-700
+packages/adapters/src/executor.test.ts
+  s_982aef1b1faf20::t_07dba37d0f8f56 1178-1195
+packages/adapters/src/executor.ts
+  s_982aef1b1faf20::t_a8c06fa59410fa 103,112,3412-3416,3433,7169,7173-7174,7177-7182
+packages/adapters/src/messaging-delivery.test.ts
+  s_982aef1b1faf20::t_44c00f0ff395e4 308,315,736-737
+packages/adapters/src/messaging-delivery.ts
+  s_982aef1b1faf20::t_30e80177a75ed3 15,160-161,188
+packages/db/src/messages.ts
+  s_982aef1b1faf20::t_b0c6e0eabe46da 43-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cecce64d98d590cf805422ed87801927d066c5e4",
+  "prompts": {},
+  "sessions": {
+    "s_982aef1b1faf20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f53c52e0-7a65-4f34-9158-2616136d6b33",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
