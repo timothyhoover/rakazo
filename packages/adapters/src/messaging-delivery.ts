@@ -17,6 +17,7 @@ import {
   createThreadMessageInTransaction,
   crossSpaceCommunicationAllowed,
   findTrustedMessagingChannelForBot,
+  isTrustedMessagingChannel,
   runAsSystem,
   SpaceDeletionInProgressError,
   THREAD_LOCK_TRANSACTION_OPTIONS,
@@ -270,6 +271,8 @@ async function mirrorChannelRun(
   });
   const firstName = owner?.name.trim().split(/\s+/)[0] || "Owner";
   const fromLabel = `${firstName}'s agent`;
+  // Everyone in a trusted group already knows the bot; the prefix is only noise.
+  const trusted = await isTrustedMessagingChannel(deps.prisma, channel.id, identity.userId);
 
   const replies = await deps.prisma.message.findMany({
     select: { id: true, blocks: true },
@@ -299,7 +302,7 @@ async function mirrorChannelRun(
     deps.prisma,
     { identityId: null, threadId: channel.threadId },
     messages.flatMap(({ message, text }) =>
-      splitOutboundBody(identity.provider, `${fromLabel}: ${text}`).map((part, index) => ({
+      splitOutboundBody(identity.provider, trusted ? text : `${fromLabel}: ${text}`).map((part, index) => ({
         idempotencyKey: index === 0 ? `msg:${message.id}` : `msg:${message.id}:${index + 1}`,
         kind: "group",
         threadId: channel.threadId,

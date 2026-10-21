@@ -2108,6 +2108,24 @@ describe("createRunExecutor", () => {
     });
   });
 
+  it("gives a trusted-group routine only the messages since its last update", () => {
+    const threadContext = {
+      messages: [
+        { seq: 3, role: "assistant", content: "Yesterday's update" },
+        { seq: 4, role: "user", content: "$100 coming back for dining" },
+      ],
+      summary: "Older context",
+      historyCompactedUpToSeq: 2,
+    };
+
+    expect(threadContextForRun("routine", threadContext, false, null, 3)).toEqual({
+      messages: [{ seq: 4, role: "user", content: "$100 coming back for dining" }],
+      summary: null,
+      historyCompactedUpToSeq: null,
+      includeSemanticRecall: false,
+    });
+  });
+
   it("stores the next 30-day run from the scheduled anchor after a fire", async () => {
     const clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-01-31T00:00:01Z"));
     const scheduledAt = new Date("2026-01-31T00:00:00Z");
