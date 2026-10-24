@@ -14,6 +14,7 @@ import {
   runPromotesMidTurnNarration,
   runReplyGuidance,
   runSendsFinishNotification,
+  runStripsNoResponse,
   stripNoResponseReply,
   subagentMarksUnread,
 } from "./executor.js";
@@ -225,6 +226,14 @@ describe("stripNoResponseReply", () => {
     );
     expect(blocks).toEqual([]);
     expect(completionMarksUnread("routine", completionNotificationBody("", blocks))).toBe(false);
+  });
+});
+
+describe("runStripsNoResponse", () => {
+  it("keeps the silent token out of group chats as well as routines", () => {
+    expect(runStripsNoResponse("message", true)).toBe(true);
+    expect(runStripsNoResponse("routine", false)).toBe(true);
+    expect(runStripsNoResponse("message", false)).toBe(false);
   });
 });
 

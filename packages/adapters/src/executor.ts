@@ -6679,9 +6679,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
           terminalCheckpointComplete = true;
 
           flushPendingTools();
-          // Only routine runs are instructed to emit NO_RESPONSE. Other
-          // allowSilentEmpty wakes (FYI, messaging) may finish truly empty.
-          const silentReply = runAllowsSilentEmpty(run.trigger)
+          // Routines are instructed to emit NO_RESPONSE, and a bot that has
+          // nothing to add in a group chat says it too. Other allowSilentEmpty
+          // wakes (FYI) may finish truly empty.
+          const silentReply = runStripsNoResponse(run.trigger, messagingChannelRun)
             ? stripNoResponseReply(assembled, messageSegments)
             : { assembled, blocks: messageSegments };
           let completionBlocks = silentReply.blocks;
@@ -7232,6 +7233,11 @@ export const ROUTINE_SILENT_REPLY_GUIDANCE = `If this routine's prompt says to s
 
 export function runAllowsSilentEmpty(trigger: string): boolean {
   return trigger === "routine";
+}
+
+/** A group chat delivers every reply, so the silent token must never reach it. */
+export function runStripsNoResponse(trigger: string, messagingChannelRun: boolean): boolean {
+  return messagingChannelRun || runAllowsSilentEmpty(trigger);
 }
 
 export function runPromotesMidTurnNarration(trigger: string): boolean {
