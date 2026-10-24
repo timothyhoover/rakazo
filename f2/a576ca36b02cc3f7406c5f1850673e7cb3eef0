@@ -1,0 +1,21 @@
+packages/adapters/src/executor-completion.test.ts
+  s_982aef1b1faf20::t_04f084b2b9bb7a 17,232-239
+packages/adapters/src/executor.ts
+  s_982aef1b1faf20::t_b7fa93bf771011 6682-6685,7238-7242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2a576ca36b02cc3f7406c5f1850673e7cb3eef0",
+  "prompts": {},
+  "sessions": {
+    "s_982aef1b1faf20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f53c52e0-7a65-4f34-9158-2616136d6b33",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
