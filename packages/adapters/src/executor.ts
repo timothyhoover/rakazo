@@ -36,9 +36,9 @@ import type { ThreadEvents } from "@rakazo/db";
 import {
   availableInSpace,
   effectiveMemoryScope,
+  findTrustedMessagingChannelForBot,
   isPartialReplyClientNonce,
   isTooManyDatabaseConnections,
-  findTrustedMessagingChannelForBot,
   isTrustedMessagingChannel,
   loadRunHistoryMessages,
   loadRunTurnCheckpoint,
