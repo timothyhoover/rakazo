@@ -579,6 +579,7 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
         const trustedChannelRun =
           messagingChannelRun &&
           Boolean(channelId) &&
+          Boolean(deps.messaging) &&
           (await isTrustedMessagingChannel(deps.prisma, channelId!, bot.userId));
         const privateChannelRun = messagingChannelRun && !trustedChannelRun;
         const historySearchBeforeSeq =
@@ -681,6 +682,8 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
         );
         const routineSinceSeq =
           run.trigger === "routine" &&
+          deps.messaging &&
+          (await deps.messaging.hasIdentity(bot.id)) &&
           (await findTrustedMessagingChannelForBot(deps.prisma, bot.id))
             ? await previousRoutineReplySeq(deps.prisma, run)
             : undefined;
