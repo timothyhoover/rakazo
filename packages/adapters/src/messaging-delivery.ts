@@ -340,7 +340,7 @@ async function fanOutToPeers(
   }: {
     identity: { provider: string; address: string; botId: string };
     channel: { id: string; name: string | null };
-    channelBlock: Extract<MessageBlock, { kind: "channel_message" }>;
+    channelBlock: Pick<Extract<MessageBlock, { kind: "channel_message" }>, "transport">;
     fromLabel: string;
     hop: number;
     peers: Array<{ identityId: string | null }>;
