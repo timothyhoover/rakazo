@@ -17,7 +17,7 @@ export default defineRailway(() => {
     healthcheckTimeout: 300,
     restartPolicyType: "ON_FAILURE",
     restartPolicyMaxRetries: 10,
-    env: { AGENT_RUNTIME: preserve(), API_HOST: preserve(), API_PROXY_TARGET: preserve(), BETTER_AUTH_SECRET: preserve(), DATABASE_URL: preserve(), DATA_DIR: preserve(), E2B_API_KEY: preserve(), ENCRYPTION_KEY: preserve(), NODE_ENV: preserve(), RAILWAY_DOCKERFILE_PATH: preserve(), RAILWAY_RUN_UID: preserve(), RAKAZO_ADDITIONAL_ALLOWED_HOSTS: preserve(), SANDBOX_IDLE_MS: preserve(), SANDBOX_PROVIDER: preserve(), SCREEN_PROXY_SECRET: preserve(), SIGNUPS_ENABLED: preserve(), SIGNUP_ALLOWLIST: preserve(), WAKEUP_DRIVER: preserve() },
+    env: { AGENT_RUNTIME: preserve(), API_HOST: preserve(), API_PROXY_TARGET: preserve(), BETTER_AUTH_SECRET: preserve(), DATABASE_URL: preserve(), DATA_DIR: preserve(), E2B_API_KEY: preserve(), ENCRYPTION_KEY: preserve(), NODE_ENV: preserve(), RAILWAY_DOCKERFILE_PATH: preserve(), RAILWAY_RUN_UID: preserve(), RAKAZO_ALLOWED_HOSTS: preserve(), SANDBOX_IDLE_MS: preserve(), SANDBOX_PROVIDER: preserve(), SCREEN_PROXY_SECRET: preserve(), SIGNUPS_ENABLED: preserve(), SIGNUP_ALLOWLIST: preserve(), WAKEUP_DRIVER: preserve() },
   });
 
   return project("rakazo", {

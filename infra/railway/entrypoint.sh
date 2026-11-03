@@ -14,7 +14,7 @@ export WEB_PORT="${PORT:-5173}"
 # Migrations run before anything serves, matching the ordering the API start
 # command guarantees in docker-compose.prod.yml.
 log "Running database migrations..."
-if ! pnpm --filter @rakazo/db exec prisma migrate deploy; then
+if ! pnpm --filter @rakazo/api db:deploy; then
   log "Migrations failed; refusing to start."
   exit 1
 fi
