@@ -657,6 +657,7 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
         const trustedChannelRun =
           messagingChannelRun &&
           Boolean(channelId) &&
+          Boolean(deps.messaging) &&
           (await isTrustedMessagingChannel(deps.prisma, channelId!, bot.userId));
         // Team chat reaches people besides the owner, so their runs get a group channel's limits.
         const teamChatConversationId =
@@ -769,6 +770,8 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
         );
         const routineSinceSeq =
           run.trigger === "routine" &&
+          deps.messaging &&
+          (await deps.messaging.hasIdentity(bot.id)) &&
           (await findTrustedMessagingChannelForBot(deps.prisma, bot.id))
             ? await previousRoutineReplySeq(deps.prisma, run)
             : undefined;
