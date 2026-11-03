@@ -1619,8 +1619,12 @@ describe("createMessagingInboundHandler channel routing", () => {
     };
     const deps = createDeps({ members: [senderMember] });
     // The owner's own number joined the group first.
-    deps.prisma.messagingIdentity.findFirst = vi.fn(async () => ({ id: "mi-owner" }));
-    deps.prisma.bot.findUnique = vi.fn(async () => ({ name: "Sam" }));
+    (deps.prisma.messagingIdentity as unknown as Record<string, unknown>).findFirst = vi.fn(
+      async () => ({ id: "mi-owner" }),
+    );
+    (deps.prisma.bot as unknown as Record<string, unknown>).findUnique = vi.fn(async () => ({
+      name: "Sam",
+    }));
     const handle = createMessagingInboundHandler(deps);
     await handle(groupEvent);
 
