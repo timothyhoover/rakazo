@@ -1,0 +1,24 @@
+infra/railway/entrypoint.sh
+  s_ecfd0ffbf9425e::t_57e19fd4f07196 11-23,29-39
+.railway/railway.ts
+  s_ecfd0ffbf9425e::t_2b2a81dada6a20 20
+  s_ecfd0ffbf9425e::t_57e19fd4f07196 14
+infra/compose/Dockerfile
+  s_ecfd0ffbf9425e::t_a5be521dda30f9 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67592d53b334c4c0a08ed2d4d09933b04c3c5def",
+  "prompts": {},
+  "sessions": {
+    "s_ecfd0ffbf9425e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "779634b3-4328-41f2-b64f-9bd5ca224c22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
