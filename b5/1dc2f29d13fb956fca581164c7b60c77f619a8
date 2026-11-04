@@ -1,0 +1,19 @@
+.railway/railway.ts
+  s_ecfd0ffbf9425e::t_566f0b8b00b740 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b51dc2f29d13fb956fca581164c7b60c77f619a8",
+  "prompts": {},
+  "sessions": {
+    "s_ecfd0ffbf9425e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "779634b3-4328-41f2-b64f-9bd5ca224c22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
