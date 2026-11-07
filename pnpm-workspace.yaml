@@ -69,3 +69,9 @@ allowBuilds:
   cpu-features: false
   protobufjs: false
   ssh2: false
+  # mongodb-mcp-server's optional native modules and a dev-only Bun setup; the driver works without them.
+  "@modelcontextprotocol/ext-apps": false
+  kerberos: false
+  macos-export-certificate-and-key: false
+  mongodb-client-encryption: false
+  os-dns-native: false

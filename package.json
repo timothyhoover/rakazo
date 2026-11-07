@@ -52,5 +52,8 @@
     "turbo": "2.11.10",
     "typescript": "7.0.2",
     "vitest": "5.1.0"
+  },
+  "dependencies": {
+    "mongodb-mcp-server": "3.0.4"
   }
 }
