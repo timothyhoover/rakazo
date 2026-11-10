@@ -1,0 +1,39 @@
+packages/core/src/action-approval.ts
+  s_ca24eb0e47a827::t_8d7e6893a8b9dc 605-606
+  s_ca24eb0e47a827::t_6bd218aade848c 603-604
+  s_ca24eb0e47a827::t_c318214e160032 200-229,627-628,631
+docs/bot-secrets.md
+  s_ca24eb0e47a827::t_2ce9c74fbf01dc 35-36
+infra/compose/docker-compose.images.yml
+  s_ca24eb0e47a827::t_d7560a1c0bd38e 61
+infra/compose/docker-compose.prod.yml
+  s_ca24eb0e47a827::t_db473da2942a40 60
+infra/compose/docker-compose.yml
+  s_ca24eb0e47a827::t_0c7d316c987080 50
+packages/adapters/src/approval-ask.test.ts
+  s_ca24eb0e47a827::t_06b6b3d4d4c41f 1,224-255
+packages/adapters/src/executor-readonly-approval.test.ts
+  s_ca24eb0e47a827::t_1f5c05c889de55 15,1526-1620
+packages/adapters/src/run-tool-gate.ts
+  s_ca24eb0e47a827::t_45311d8fb7f4de 26,297-298,304,379
+packages/core/src/action-approval.test.ts
+  s_ca24eb0e47a827::t_2aa7d951f26679 1,11,27,556-563,1056,1118-1151
+packages/db/src/events.test.ts
+  s_ca24eb0e47a827::t_e5e1ffd6cd999b 8,2894-2999
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "81596db163c9fdc041705773b42c98217a02b2bc",
+  "prompts": {},
+  "sessions": {
+    "s_ca24eb0e47a827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e075dae6-d091-4556-aad4-3bf2eeb184ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
