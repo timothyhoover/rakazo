@@ -742,13 +742,16 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
           messages,
           people,
         );
-        const routineSinceSeq =
+        // A routine's reply is mirrored to the bot's trusted group when it has one.
+        const routineInTrustedGroup = Boolean(
           run.trigger === "routine" &&
-          deps.messaging &&
-          (await deps.messaging.hasIdentity(bot.id)) &&
-          (await findTrustedMessagingChannelForBot(deps.prisma, bot.id))
-            ? await previousRoutineReplySeq(deps.prisma, run)
-            : undefined;
+            deps.messaging &&
+            (await deps.messaging.hasIdentity(bot.id)) &&
+            (await findTrustedMessagingChannelForBot(deps.prisma, bot.id)),
+        );
+        const routineSinceSeq = routineInTrustedGroup
+          ? await previousRoutineReplySeq(deps.prisma, run)
+          : undefined;
         const threadContext = threadContextForRun(
           run.trigger,
           {
@@ -1250,14 +1253,16 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
         const botEmail = emailName ? `${emailName.name}@${deps.inboundEmailDomain}` : null;
         // The inbox is the owner's mail: read only in their own runs, never in a group or channel, and
         // never for another bot, which may be answering someone else. A trusted group keeps the
-        // owner's memory but is still a group, so it never gets the inbox either.
+        // owner's memory but is still a group, so it never gets the inbox either, nor does a
+        // routine whose reply is mirrored to everyone in that group.
         const emailInbox =
           Boolean(botEmail) &&
           run.userId === bot.userId &&
           run.trigger !== "bot_message" &&
           !thread.groupId &&
           !messagingChannelRun &&
-          !nonOwnerChatRun;
+          !nonOwnerChatRun &&
+          !routineInTrustedGroup;
         const userComputerOwnerId = userComputerOwner({
           trigger: run.trigger,
           sourceRole: sourceMessage?.role,

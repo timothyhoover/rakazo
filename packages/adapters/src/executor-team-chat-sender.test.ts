@@ -15,6 +15,7 @@ vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
 
 const OWNER_MEMORY = "Owner's door code is 4821";
 const OWNER_NOTE = "Plan the owner's surprise party";
+const GROUP_CORRECTION = "Dinner moved to 7pm, said in the family group";
 
 type Sender = { senderId: string; senderIsBot?: boolean };
 
@@ -28,6 +29,8 @@ async function teamChatRun(input: {
   messagingChat?: "dm" | "trusted group";
   /** The bot has its own email inbox. */
   botEmail?: boolean;
+  /** The owner's scheduled routine run instead, on a bot that may sit in a trusted group. */
+  routine?: { trustedGroup: boolean };
 }) {
   const [waking, ...batched] = input.senders.map((sender, index) => ({
     id: `external-${index}`,
@@ -53,8 +56,8 @@ async function teamChatRun(input: {
     spaceId: "space-1",
     userId: "user-1",
     status: "queued",
-    trigger: "messaging",
-    sourceMessageId: "source-1",
+    trigger: input.routine ? "routine" : "messaging",
+    sourceMessageId: input.routine ? null : "source-1",
     leaseFence: 0,
   };
   const prisma = {
@@ -70,6 +73,7 @@ async function teamChatRun(input: {
         Object.assign(run, data);
         return { count: 1 };
       }),
+      findMany: vi.fn(async () => []),
     },
     chatGroup: { findMany: vi.fn(async () => []) },
     bot: {
@@ -93,12 +97,33 @@ async function teamChatRun(input: {
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.threadId,
         groupId: null,
-        externalConversationId: input.messagingChat ? null : "conversation-1",
+        externalConversationId: input.messagingChat || input.routine ? null : "conversation-1",
       })),
       update: vi.fn(async () => ({ nextMessageSeq: 2, nextEventSeq: 2 })),
     },
     message: {
-      findMany: vi.fn(async () => []),
+      findMany: vi.fn(async () =>
+        input.routine
+          ? [
+              {
+                id: "group-message-1",
+                threadId: run.threadId,
+                seq: 5,
+                role: "user",
+                botId: null,
+                runId: null,
+                blocks: [{ kind: "text", text: GROUP_CORRECTION }],
+                authorUserId: run.userId,
+                createdAt: new Date("2026-11-01T00:00:00.000Z"),
+                replyToMessageId: null,
+                replyQuote: null,
+                replyTo: null,
+                clientNonce: null,
+                steeringMessages: [],
+              },
+            ]
+          : [],
+      ),
       findFirst: vi.fn(async () => null),
       findUnique: vi.fn(async () => ({
         blocks:
@@ -217,10 +242,18 @@ async function teamChatRun(input: {
       ),
     },
     messagingIdentity: {
+      findUnique: vi.fn(async () =>
+        input.routine ? { id: "identity-1", userId: run.userId } : null,
+      ),
       findMany: vi.fn(async ({ where }: { where: { address: { in: string[] } } }) =>
         (input.linkedAddresses ?? [])
           .filter((address) => where.address.in.includes(address))
           .map((address) => ({ address, userId: run.userId })),
+      ),
+    },
+    messagingChannelMember: {
+      findMany: vi.fn(async () =>
+        input.routine?.trustedGroup ? [{ channelId: "channel-1" }] : [],
       ),
     },
     messagingChannel: {
@@ -270,18 +303,23 @@ async function teamChatRun(input: {
     },
     jobs: { enqueue: vi.fn(async () => undefined) },
     secrets: [],
-    ...(input.messagingChat ? { messaging: { hasIdentity: async () => true } } : {}),
+    ...(input.messagingChat || input.routine
+      ? { messaging: { hasIdentity: async () => true } }
+      : {}),
     ...(input.botEmail ? { inboundEmailDomain: "mail.example.test" } : {}),
+    ...(input.routine ? { email: { send: vi.fn(async () => undefined) } } : {}),
   } as unknown as Parameters<typeof createRunExecutor>[0]);
   await executor.continueRun(run.id, "worker-1");
   if (!request) throw new Error("the run never reached the model");
   const tools = request.tools.map((tool) => tool.name);
   const context = [request.instructions, request.prompt].join("\n");
+  const history = JSON.stringify(request.history);
   return {
     tools,
     context,
     sawOwnerState: context.includes(OWNER_MEMORY) || context.includes(OWNER_NOTE),
     toldNonOwner: context.includes("someone other than your owner"),
+    sawGroupHistory: history.includes(GROUP_CORRECTION),
   };
 }
 
@@ -368,5 +406,32 @@ describe("the bot's email inbox in text-messaging runs", () => {
       botEmail: true,
     });
     for (const tool of inboxTools) expect(result.tools).toContain(tool);
+  });
+});
+
+describe("the bot's email inbox in the owner's routine runs", () => {
+  const inboxTools = ["read_email", "delete_email", "send_email"];
+  const ownerNumber = "+15550000001";
+  const routineRun = (trustedGroup: boolean) =>
+    teamChatRun({
+      senders: [{ senderId: ownerNumber }],
+      linkedAddresses: [ownerNumber],
+      botEmail: true,
+      routine: { trustedGroup },
+    });
+
+  // The routine's reply is mirrored to everyone in the trusted group, so it must not read the mail.
+  it("stays out of a routine whose reply goes to the bot's trusted group", async () => {
+    const [grouped, alone] = await Promise.all([routineRun(true), routineRun(false)]);
+    for (const tool of inboxTools) expect(grouped.tools).not.toContain(tool);
+    expect(grouped.tools).toEqual(alone.tools.filter((tool) => !inboxTools.includes(tool)));
+    expect(grouped.sawGroupHistory).toBe(true);
+    expect(grouped.sawOwnerState).toBe(true);
+  });
+
+  it("is offered in a routine on a bot with no trusted group", async () => {
+    const result = await routineRun(false);
+    for (const tool of inboxTools) expect(result.tools).toContain(tool);
+    expect(result.sawGroupHistory).toBe(false);
   });
 });
