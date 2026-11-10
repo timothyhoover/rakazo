@@ -53,7 +53,7 @@ export function buildApprovalAskBlock(
       detailFormat: toolName === "set_child_instructions" ? "code" : "text",
       status: "pending",
       actions:
-        toolRequiresExplicitApproval(toolName) || options.summary.onceOnly
+        toolRequiresExplicitApproval(toolName, args) || options.summary.onceOnly
           ? [
               { id: "allow", label: "Allow once" },
               { id: "deny", label: "Deny" },
@@ -183,7 +183,7 @@ export function buildApprovalAskBlock(
             { id: "allow", label: "Create space", outcome: "created" },
             { id: "deny", label: "Cancel", outcome: "cancelled" },
           ]
-        : toolRequiresExplicitApproval(toolName)
+        : toolRequiresExplicitApproval(toolName, args)
           ? [
               { id: "allow", label: "Allow once" },
               { id: "deny", label: "Deny" },

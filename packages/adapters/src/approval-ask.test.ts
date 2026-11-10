@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { approvalDetailLength, buildApprovalAskBlock } from "./approval-ask.js";
 
 describe("buildApprovalAskBlock", () => {
@@ -175,6 +175,38 @@ describe("bot management approval cards", () => {
     const block = buildApprovalAskBlock("effect-1", "set_child_bot_model", { bot_id: "bot-a" }, []);
     if (block.kind !== "ask") throw new Error("expected ask block");
     expect(block.actions?.map((action) => action.id)).toEqual(["allow", "deny"]);
+  });
+});
+
+describe("confirm-every-use secret cards", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const url = "https://api.example.test/issues";
+
+  it("offers only Allow once and Deny for a listed secret", () => {
+    vi.stubEnv("CONFIRM_EVERY_USE_SECRETS", "ops_key, factory-inbox");
+    const block = buildApprovalAskBlock(
+      "effect-1",
+      "secret_request",
+      { name: "factory-inbox", url },
+      [],
+    );
+    if (block.kind !== "ask") throw new Error("expected ask block");
+    expect(block.actions).toEqual([
+      { id: "allow", label: "Allow once" },
+      { id: "deny", label: "Deny" },
+    ]);
+  });
+
+  it("keeps Always allow for any other secret", () => {
+    vi.stubEnv("CONFIRM_EVERY_USE_SECRETS", "factory-inbox");
+    const block = buildApprovalAskBlock(
+      "effect-1",
+      "secret_request",
+      { name: "other_api", url },
+      [],
+    );
+    if (block.kind !== "ask") throw new Error("expected ask block");
+    expect(block.actions?.map((action) => action.id)).toEqual(["allow", "always", "deny"]);
   });
 });
 

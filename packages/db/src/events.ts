@@ -37,6 +37,7 @@ import {
   SITE_SENDING_TOOLS,
   STEERING_CONTINUATION_PROMPT,
   sanitizeJsonValue,
+  toolRequiresExplicitApproval,
 } from "@rakazo/core";
 import { urlSite } from "@rakazo/core/egress";
 import { approvalEffectKey } from "@rakazo/core/node/approval-effect-key";
@@ -970,6 +971,10 @@ async function commitAnswerRunInput(
     }
     if (input.answer === "always") {
       if (run.userId !== input.answeredByUserId) return null;
+      // A card that needs a person every time never saves a rule, even when a stale card or
+      // client still offers Always. Refused, not taken as Allow once: nothing runs that the
+      // person didn't choose, and the card stays open for Allow once or Deny.
+      if (toolRequiresExplicitApproval(approvalEffect.kind, approvalEffect.request)) return null;
       approvalUserId = input.answeredByUserId;
     }
   }

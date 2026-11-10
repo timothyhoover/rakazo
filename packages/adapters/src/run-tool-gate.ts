@@ -23,6 +23,7 @@ import {
   repeatsDeniedAction,
   resolveActionApprovalForTools,
   SITE_SENDING_TOOLS,
+  sendsConfirmEveryUseSecret,
   toolRequiresApproval,
   toolRequiresExplicitApproval,
   unattendedTriggerToolRequiresApproval,
@@ -267,11 +268,14 @@ export async function gateToolCall(
       ));
   // A gated read still fails closed when its review errors, and keeps its approval key.
   const gated = requiresApprovalByDefault || connectorReadGated;
+  // A deployment can make a credential need a person's Allow once on every secret_request.
+  const everyUse = sendsConfirmEveryUseSecret(name, args);
   const requiresMandatoryApproval =
     paying ||
     commandWatch ||
     scheduleNamesNewSite ||
     requiresUnattendedApproval ||
+    everyUse ||
     toolRequiresExplicitApproval(name);
   // Never ask runs everything else: only another owner's connection could have been steered into it.
   const guardedInNeverAsk = name === "respond_agent_connection";
@@ -341,6 +345,7 @@ export async function gateToolCall(
         checkerConfigured,
         newDestination: siteGate === "new",
         purchase: paying,
+        everyUse,
       });
   // Nobody is there to approve a purchase a webhook run reaches.
   if (paying && run.trigger === "webhook" && plan !== "deny") {
