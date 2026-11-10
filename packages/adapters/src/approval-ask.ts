@@ -63,7 +63,7 @@ export function buildApprovalAskBlock(
     onceOnly?: boolean;
   },
 ): MessageBlock {
-  const onceOnly = toolRequiresExplicitApproval(toolName) || Boolean(options?.onceOnly);
+  const onceOnly = toolRequiresExplicitApproval(toolName, args) || Boolean(options?.onceOnly);
   if (options?.summary) {
     // Built from what was resolved before the effect was recorded, not from what the model typed.
     return {

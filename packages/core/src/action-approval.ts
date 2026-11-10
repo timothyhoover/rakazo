@@ -197,9 +197,36 @@ function innerToolSlugs(args: unknown): string[] {
   });
 }
 
-/** Security-boundary changes cannot be auto-reviewed or permanently allowed. */
-export function toolRequiresExplicitApproval(toolName: string): boolean {
-  return EXPLICIT_APPROVAL_BUILTIN_TOOLS.has(toolName);
+/**
+ * Security-boundary changes cannot be auto-reviewed or permanently allowed. With `args`, so can't a
+ * call that sends a confirm-every-use secret (see sendsConfirmEveryUseSecret).
+ */
+export function toolRequiresExplicitApproval(toolName: string, args?: unknown): boolean {
+  return (
+    EXPLICIT_APPROVAL_BUILTIN_TOOLS.has(toolName) || sendsConfirmEveryUseSecret(toolName, args)
+  );
+}
+
+/** Saved credential names a deployment lists in CONFIRM_EVERY_USE_SECRETS, comma-separated. */
+export function confirmEveryUseSecrets(
+  env: Record<string, string | undefined> = process.env,
+): Set<string> {
+  return new Set(
+    (env.CONFIRM_EVERY_USE_SECRETS ?? "")
+      .split(",")
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+/**
+ * A secret_request names its credential only by `name`. One listed in CONFIRM_EVERY_USE_SECRETS
+ * needs a person's Allow once on every call, in every mode: no rule, review or Always passes it.
+ */
+export function sendsConfirmEveryUseSecret(toolName: string, args: unknown): boolean {
+  if (toolName !== "secret_request") return false;
+  const name = (args as { name?: unknown } | null | undefined)?.name;
+  return typeof name === "string" && confirmEveryUseSecrets().has(name.trim().toLowerCase());
 }
 
 /**
@@ -573,10 +600,10 @@ export function approvalPreferenceFromMode(mode: ApprovalMode): {
 export type AutoReviewJudgeDecision = "pass" | "ask" | "error";
 
 /**
- * The gate after rule resolution. A block refuses in every mode. A purchase asks in every mode, Never
- * ask included, and no allow rule or review passes it. An approval a person must give
- * asks, except in Never ask, which never waits: there it runs, unless `steerable` says outside
- * text could have asked for it. Otherwise Never ask runs it, an ask rule asks, and anything that
+ * The gate after rule resolution. A block refuses in every mode. A purchase, or a call sending a
+ * confirm-every-use secret, asks in every mode, Never ask included, and no allow rule or review
+ * passes it. An approval a person must give asks, except in Never ask, which never waits: there it
+ * runs, unless `steerable` says outside text could have asked for it. Otherwise Never ask runs it, an ask rule asks, and anything that
  * would ask goes to the approval model in Auto, falling back to asking when no model is set up.
  */
 export function planActionGate(input: {
@@ -597,9 +624,11 @@ export function planActionGate(input: {
   newDestination?: boolean;
   /** A click that completes a purchase: a person approves it each time, in every mode. */
   purchase?: boolean;
+  /** Sends a confirm-every-use secret: asked each time, in every mode, like a purchase. */
+  everyUse?: boolean;
 }): "ask" | "allow" | "judge" | "deny" {
   if (input.resolved.decision === "deny") return "deny";
-  if (input.purchase) return "ask";
+  if (input.purchase || input.everyUse) return "ask";
   if (input.mandatory) {
     if (input.mode !== "never") return "ask";
     return input.steerable ? "deny" : "allow";

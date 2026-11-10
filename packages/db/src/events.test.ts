@@ -5,7 +5,7 @@ import {
   TAKEOVER_COMPUTER_PENDING_STATE,
   TAKEOVER_COMPUTER_SKIPPED_STATE,
 } from "@rakazo/core";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { commitBotUpdate } from "./bot-update.js";
 import type { PrismaClient } from "./client.js";
 import { CrossSpaceCommunicationBlockedError } from "./cross-space-communication.js";
@@ -2889,6 +2889,112 @@ describe("answerRunInput approvals", () => {
     expect(
       tx.userActionApprovalRule.upsert.mock.calls.map(([call]) => call.create.matchValue),
     ).toEqual(saved);
+  });
+
+  describe("a card for a confirm-every-use secret", () => {
+    afterEach(() => vi.unstubAllEnvs());
+    function secretRequestCard(name: string) {
+      const tx = {
+        $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
+        message: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: "message-1",
+            blocks: [
+              {
+                kind: "ask",
+                approvalEffectId: "effect-1",
+                text: "Review before secret_request",
+                status: "pending",
+                // A card from before the setting, or a client that still shows Always.
+                actions: [
+                  { id: "allow", label: "Allow once" },
+                  { id: "always", label: "Always allow this tool" },
+                  { id: "deny", label: "Deny" },
+                ],
+              },
+            ],
+          }),
+          update: vi.fn().mockResolvedValue({ id: "message-1" }),
+        },
+        run: {
+          findFirst: vi.fn().mockResolvedValue({ botId: "bot-1", userId: "user-1" }),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          findUnique: vi.fn().mockResolvedValue({ userId: "user-1", status: "queued" }),
+        },
+        task: { updateMany: vi.fn() },
+        externalEffect: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: "effect-1",
+            status: "intended",
+            kind: "secret_request",
+            request: { name, url: "https://api.example.test/issues", method: "POST" },
+            batchActions: null,
+          }),
+          update: vi.fn().mockResolvedValue({ id: "effect-1" }),
+        },
+        spaceSettingOverride: { findUnique: vi.fn().mockResolvedValue(null) },
+        userActionApprovalRule: {
+          findMany: vi.fn().mockResolvedValue([]),
+          deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+          upsert: vi.fn().mockResolvedValue({ id: "rule-1" }),
+        },
+        actionApprovalRule: { upsert: vi.fn() },
+        thread: { update: vi.fn().mockResolvedValue({ nextEventSeq: 10 }) },
+        event: {
+          create: vi.fn(async ({ data }: { data: { seq: number; type: string } }) => ({
+            ...event(data.seq),
+            type: data.type,
+          })),
+        },
+      };
+      const prisma = {
+        $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      } as unknown as PrismaClient;
+      const answer = (value: string) =>
+        answerRunInput(
+          prisma,
+          {
+            spaceId: "workspace-1",
+            threadId: "thread-1",
+            runId: "run-1",
+            messageId: "message-1",
+            answeredByUserId: "user-1",
+            answer: value,
+          },
+          new TestFanout(),
+        );
+      return { tx, answer };
+    }
+
+    it("refuses Always, saving no rule and leaving the card to answer", async () => {
+      vi.stubEnv("CONFIRM_EVERY_USE_SECRETS", "factory-inbox");
+      const { tx, answer } = secretRequestCard("factory-inbox");
+      await expect(answer("always")).resolves.toBe(false);
+      expect(tx.userActionApprovalRule.upsert).not.toHaveBeenCalled();
+      expect(tx.actionApprovalRule.upsert).not.toHaveBeenCalled();
+      expect(tx.externalEffect.update).not.toHaveBeenCalled();
+      expect(tx.run.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("still takes Allow once", async () => {
+      vi.stubEnv("CONFIRM_EVERY_USE_SECRETS", "factory-inbox");
+      const { tx, answer } = secretRequestCard("factory-inbox");
+      await expect(answer("allow")).resolves.toBe(true);
+      expect(tx.externalEffect.update).toHaveBeenCalledWith({
+        where: { id: "effect-1" },
+        data: { status: "approved" },
+      });
+      expect(tx.userActionApprovalRule.upsert).not.toHaveBeenCalled();
+    });
+
+    it("saves Always as before for another secret", async () => {
+      vi.stubEnv("CONFIRM_EVERY_USE_SECRETS", "factory-inbox");
+      const { tx, answer } = secretRequestCard("other_api");
+      await expect(answer("always")).resolves.toBe(true);
+      expect(
+        tx.userActionApprovalRule.upsert.mock.calls.map(([call]) => call.create.matchValue),
+      ).toEqual(["secret_request"]);
+    });
   });
 
   it("does not let another workspace member create an always-allow rule for the run owner", async () => {

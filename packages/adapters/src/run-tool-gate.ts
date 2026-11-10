@@ -23,6 +23,7 @@ import {
   repeatsDeniedAction,
   resolveActionApprovalForTools,
   SITE_SENDING_TOOLS,
+  sendsConfirmEveryUseSecret,
   toolRequiresApproval,
   toolRequiresExplicitApproval,
   unattendedTriggerToolRequiresApproval,
@@ -293,9 +294,15 @@ export async function gateToolCall(
       ));
   // A gated read still fails closed when its review errors, and keeps its approval key.
   const gated = requiresApprovalByDefault || connectorReadGated;
+  // A deployment can make a credential need a person's Allow once on every secret_request.
+  const everyUse = sendsConfirmEveryUseSecret(name, args);
   // These ask in every run, whatever started it.
   const mandatoryInAnyRun =
-    paying || commandWatch || scheduleNamesNewSite || toolRequiresExplicitApproval(name);
+    paying ||
+    commandWatch ||
+    scheduleNamesNewSite ||
+    everyUse ||
+    toolRequiresExplicitApproval(name);
   const requiresMandatoryApproval = mandatoryInAnyRun || requiresUnattendedApproval;
   // No allow rule skips these, and without them the tool needs no approval, so "Always allow"
   // on their card would save a rule that never takes effect.
@@ -369,6 +376,7 @@ export async function gateToolCall(
         checkerConfigured,
         newDestination: siteGate === "new",
         purchase: paying,
+        everyUse,
       });
   // Nobody is there to approve a purchase a webhook run reaches.
   if (paying && run.trigger === "webhook" && plan !== "deny") {
@@ -593,7 +601,7 @@ export async function gateToolCall(
     reviewReason: webhookForcedAsk ? WEBHOOK_RUN_ASK_REASON : reviewReason,
     summary: request.fleetSummary,
     batch: connectorTool?.batch,
-    onceOnly: asksEveryTime || webhookForcedAsk,
+    onceOnly: asksEveryTime || webhookForcedAsk || everyUse,
   };
 
   if (applied?.duplicate) {

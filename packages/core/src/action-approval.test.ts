@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ActionApprovalRule, ApprovalMode } from "./action-approval.js";
 import {
   applyJudgeDecision,
@@ -8,6 +8,7 @@ import {
   approvalRuleChoices,
   approvalRuleEffectChoices,
   batchActions,
+  confirmEveryUseSecrets,
   connectorKindFromToolName,
   connectorReadRequiresApproval,
   connectorToolRequiresApproval,
@@ -23,6 +24,7 @@ import {
   resolveActionApproval,
   resolveActionApprovalDetail,
   resolveActionApprovalForTools,
+  sendsConfirmEveryUseSecret,
   toolRequiresApproval,
   toolRequiresExplicitApproval,
   toolResultTaintsRun,
@@ -549,6 +551,14 @@ describe("planActionGate", () => {
     expect(gate("auto", { ...read, checkerConfigured: false })).toBe("allow");
     expect(gate("ask", read)).toBe("allow");
     expect(gate("never", read)).toBe("allow");
+  });
+
+  it("asks every time for a confirm-every-use secret, in every mode, past allow rules", () => {
+    for (const mode of ["never", "auto", "ask"] as const) {
+      expect(gate(mode, { everyUse: true, mandatory: true, resolved: allowed })).toBe("ask");
+      expect(gate(mode, { everyUse: true, mandatory: true, steerable: false })).toBe("ask");
+      expect(gate(mode, { everyUse: true, mandatory: true, resolved: blocked })).toBe("deny");
+    }
   });
 
   it("judges a new site in Auto even with a rule for the whole tool, and asks in Ask", () => {
@@ -1102,5 +1112,40 @@ describe("approvalRuleEffectChoices", () => {
       "deny",
     ]);
     expect(approvalRuleEffectChoices(rule("category", "email"))).toEqual([]);
+  });
+});
+
+describe("confirm-every-use secrets", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("reads comma-separated names, trimming spaces and skipping empties", () => {
+    expect([
+      ...confirmEveryUseSecrets({ CONFIRM_EVERY_USE_SECRETS: " factory-inbox , ,ops_key," }),
+    ]).toEqual(["factory-inbox", "ops_key"]);
+    expect(confirmEveryUseSecrets({ CONFIRM_EVERY_USE_SECRETS: "" }).size).toBe(0);
+    expect(confirmEveryUseSecrets({ CONFIRM_EVERY_USE_SECRETS: " , " }).size).toBe(0);
+    expect(confirmEveryUseSecrets({}).size).toBe(0);
+  });
+
+  it("matches a secret_request by the credential name it sends", () => {
+    vi.stubEnv("CONFIRM_EVERY_USE_SECRETS", "factory-inbox");
+    const url = "https://api.example.test/issues";
+    expect(sendsConfirmEveryUseSecret("secret_request", { name: "factory-inbox", url })).toBe(true);
+    // A name the request schema would refuse still counts, so the check fails closed.
+    expect(sendsConfirmEveryUseSecret("secret_request", { name: " Factory-Inbox " })).toBe(true);
+    expect(sendsConfirmEveryUseSecret("secret_request", { name: "other_api", url })).toBe(false);
+    expect(sendsConfirmEveryUseSecret("secret_request", { name: 1 })).toBe(false);
+    expect(sendsConfirmEveryUseSecret("secret_request", undefined)).toBe(false);
+    expect(sendsConfirmEveryUseSecret("forget_secret", { name: "factory-inbox" })).toBe(false);
+    expect(toolRequiresExplicitApproval("secret_request", { name: "factory-inbox" })).toBe(true);
+    expect(toolRequiresExplicitApproval("secret_request", { name: "other_api" })).toBe(false);
+    expect(toolRequiresExplicitApproval("secret_request")).toBe(false);
+  });
+
+  it("matches nothing when the setting is unset or empty", () => {
+    for (const value of [undefined, "", " "]) {
+      vi.stubEnv("CONFIRM_EVERY_USE_SECRETS", value);
+      expect(sendsConfirmEveryUseSecret("secret_request", { name: "factory-inbox" })).toBe(false);
+    }
   });
 });

@@ -12,7 +12,7 @@ import { inboundRoutineBlock } from "@rakazo/core";
 import { approvalEffectKey, toolEffectIdempotencyKey } from "@rakazo/core/node/approval-effect-key";
 import type { PrismaClient } from "@rakazo/db";
 import { createPendingSteeringRun, sendUserMessage } from "@rakazo/db";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DENIED_ACTION_ERROR, isApprovalPausedResult } from "./approval-effect.js";
 import { MAX_SHARED_MEMORY_CHARS } from "./builtin-tools.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
@@ -1520,6 +1520,101 @@ describe("create_space", () => {
     expect(f.pauseRunForInput).not.toHaveBeenCalled();
     expect(f.effects).toHaveLength(1);
     expect(f.effects[0]?.status).not.toBe("intended");
+  });
+});
+
+describe("secret_request with a confirm-every-use secret", () => {
+  const listed = { name: "factory-inbox", url: "https://api.example.test/issues", method: "POST" };
+  const other = { ...listed, name: "other_api" };
+  const toolRule: ActionApprovalRule = {
+    effect: "always_allow",
+    matchKind: "tool",
+    matchValue: "secret_request",
+  };
+  const siteRule: ActionApprovalRule = {
+    effect: "always_allow",
+    matchKind: "site",
+    matchValue: "api.example.test",
+  };
+  beforeEach(() => {
+    vi.stubEnv("CONFIRM_EVERY_USE_SECRETS", "factory-inbox, ops_key");
+    reviewMock.mockReset();
+    reviewMock.mockResolvedValue({ decision: "pass", reason: "Fits the request", model: "mock" });
+  });
+  afterEach(() => vi.unstubAllEnvs());
+  const cardActions = (f: ReturnType<typeof fixture>) =>
+    (
+      f.pauseRunForInput.mock.calls as unknown as [
+        { blocks: Array<{ actions?: Array<{ id: string }> }> },
+      ][]
+    )[0]?.[0].blocks[0]?.actions?.map((action) => action.id);
+
+  it("asks with only Allow once and Deny, and Auto's approval model never judges it", async () => {
+    const f = fixture({ name: "secret_request", builtin: true, autoReview: true });
+    f.setCalls([{ args: listed, executionId: "call-1" }]);
+    await f.run();
+    expect(reviewMock).not.toHaveBeenCalled();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(cardActions(f)).toEqual(["allow", "deny"]);
+    expect(f.effects[0]?.status).toBe("intended");
+  });
+
+  it.each([
+    ["a tool rule", [toolRule], false],
+    ["a site rule in Never ask", [siteRule], true],
+    ["both rules in Auto", [toolRule, siteRule], false],
+  ])("still asks past %s", async (_, rules, skipApprovals) => {
+    const f = fixture({
+      name: "secret_request",
+      builtin: true,
+      rules,
+      skipApprovals,
+      autoReview: !skipApprovals,
+    });
+    f.setCalls([{ args: listed, executionId: "call-1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(f.effects[0]?.status).toBe("intended");
+  });
+
+  it("still asks in Never ask for the owner's own run", async () => {
+    const f = fixture({ name: "secret_request", builtin: true, skipApprovals: true });
+    f.setCalls([{ args: listed, executionId: "call-1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(cardActions(f)).toEqual(["allow", "deny"]);
+  });
+
+  it("uses an approval once: the next identical call asks again despite an allow rule", async () => {
+    const rules: ActionApprovalRule[] = [];
+    const f = fixture({ name: "secret_request", builtin: true, rules });
+    f.setCalls([{ args: listed, executionId: "call-1" }]);
+    await f.run();
+    expect(f.effects).toHaveLength(1);
+    f.effects[0]!.status = "approved";
+    // As if a stale card had saved Always allow for the tool.
+    rules.push(toolRule);
+    f.setCalls([
+      { args: listed, executionId: "call-2" },
+      { args: listed, executionId: "call-3" },
+    ]);
+    await f.run(true);
+    expect(f.effects[0]?.status).toBe("completed");
+    expect(f.effects).toHaveLength(2);
+    expect(f.effects[1]?.status).toBe("intended");
+    expect(f.pauseRunForInput).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves other secrets to the usual rules", async () => {
+    const allowed = fixture({ name: "secret_request", builtin: true, rules: [toolRule] });
+    allowed.setCalls([{ args: other, executionId: "call-1" }]);
+    await allowed.run(true);
+    expect(allowed.pauseRunForInput).not.toHaveBeenCalled();
+
+    const asked = fixture({ name: "secret_request", builtin: true });
+    asked.setCalls([{ args: other, executionId: "call-1" }]);
+    await asked.run();
+    expect(cardActions(asked)).toEqual(["allow", "always", "deny"]);
   });
 });
 
