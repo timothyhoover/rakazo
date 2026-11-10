@@ -1,0 +1,109 @@
+packages/adapters/src/messaging-delivery.test.ts
+  s_0f22f0cb7a1da9::t_da4e80777a0981 139-140,174-178,194-213,578-596,598-600
+  s_0f22f0cb7a1da9::t_19d189cd9fdb43 597,601
+packages/db/src/messaging.test.ts
+  s_0f22f0cb7a1da9::t_381e447df285dd 275,300-336
+  s_0f22f0cb7a1da9::t_3ec403d3250f00 337
+packages/db/src/messaging.ts
+  s_0f22f0cb7a1da9::t_c3b92818194de3 176-231
+packages/adapters/src/messaging-delivery.ts
+  s_0f22f0cb7a1da9::t_9e4070c5d67389 13,15,17,19,23
+  s_0f22f0cb7a1da9::t_929d5b9484781f 146-154,156
+  s_0f22f0cb7a1da9::t_79a4b83fc7099c 253-256
+packages/adapters/src/executor.ts
+  s_0f22f0cb7a1da9::t_4dbb0412d19338 18
+  s_0f22f0cb7a1da9::t_f9456a08c1c652 35
+packages/core/src/messaging-prompts.ts
+  s_0f22f0cb7a1da9::t_b08c29e55aebfe 30-38
+packages/adapters/src/composio-connector.test.ts
+  s_2bfbf56fed595e::t_1817f963525b65 10,290-298,306-310,317-320,337-338
+  s_2bfbf56fed595e::t_b28770f1ce6faf 62,140,144,304-305,929-938,941-978,1094-1097
+  s_2bfbf56fed595e::t_fc74cb74150bad 299-303,321-328
+  s_2bfbf56fed595e::t_acb1844b3bbeee 329-336
+packages/adapters/src/composio-connector.ts
+  s_2bfbf56fed595e::t_be734744e8888a 626-627,629,950-958,960-962,964,972,977-978
+  s_2bfbf56fed595e::t_e61019632fb807 959,963,973
+  s_2bfbf56fed595e::t_473a6d830c18f8 965-968,971
+  s_2bfbf56fed595e::t_8b2b59cbad7b60 973-976
+packages/adapters/src/thread-artifacts.test.ts
+  s_23d5246ba086ae::t_e9ee165c5e97e6 44-68,343
+  s_23d5246ba086ae::t_f03c1253073d57 338
+packages/adapters/src/executor-lazy-computer.test.ts
+  s_23d5246ba086ae::t_3746e788f11711 5-7,11-27,28,58-64,68-69,71,74-75,107-111,116-118,143-157,164,166-169,176-188,203,205-207,216,219,220-226,228-230,246-248,255-257,260,262,265-266,278-283,292-294,302,313-315,343-345,348-353,355-357,414-422,548-568,614-620,815-816
+  s_23d5246ba086ae::t_327a3841945547 817,824-836
+  s_23d5246ba086ae::t_6bcdca20237dc6 29-30,50,104-107,289,585-590
+docs/self-host-sandbox-providers.md
+  s_23d5246ba086ae::t_ea8e9dd54bc1c8 334,407-421
+package.json
+  s_23d5246ba086ae::t_91f52211bdcfc6 25
+packages/adapter-kit/src/interfaces.ts
+  s_23d5246ba086ae::t_59f092ba95a8df 155-156,159
+packages/adapters/src/cli/build-e2b-template.ts
+  s_23d5246ba086ae::t_66dd4ea1cecf93 1-14
+packages/adapters/src/computer-idle.test.ts
+  s_23d5246ba086ae::t_b01ef902652e8e 32,367,999-1000,1002-1005,1010-1012,1014-1017,1100-1102,1104-1113,1115-1125,1131-1141,1147-1154,1156-1164,1287,1289-1305,1478-1479,1977,2006
+  s_23d5246ba086ae::t_4f5d49bcd21c33 1165-1168,1170,1172-1176,1223-1224,1225,1285-1286
+  s_23d5246ba086ae::t_14ac1daee80c81 15
+  s_23d5246ba086ae::t_e840f0390056ea 913-915,917-921,923-925
+  s_23d5246ba086ae::t_63889474609c3b 912-925,1975,2080
+packages/adapters/src/computer-idle.ts
+  s_23d5246ba086ae::t_4678cb1a2c86f9 40,57,61,392-393,396-401,405,417-418,486-487,506-507,698,1008,1015-1020,1026
+  s_23d5246ba086ae::t_29cd5a95f47cb7 402-404,407-411,481,488
+  s_23d5246ba086ae::t_e9234c1ad99781 585-587,589-595,597-601,603-604
+  s_23d5246ba086ae::t_9a8bb3bf39d5ef 1087,1094
+packages/adapters/src/e2b-sandbox.test.ts
+  s_23d5246ba086ae::t_3394dfb83da8a4 22,296-300,302-322,324-342,344-352
+  s_23d5246ba086ae::t_ff3370e1ae01d9 1446-1447,1466-1481,1485-1500
+  s_23d5246ba086ae::t_63889474609c3b 1482-1483
+  s_23d5246ba086ae::t_12a6c7b8affe8c 1448-1465,1484
+packages/adapters/src/e2b-sandbox.ts
+  s_23d5246ba086ae::t_0ffda37ec5281e 1
+packages/adapters/src/e2b-template.test.ts
+  s_23d5246ba086ae::t_a95eb246179bca 1-28
+packages/adapters/src/e2b-template.ts
+  s_23d5246ba086ae::t_44449fade0f6e0 1,2-21,23-28,30-40
+packages/adapters/src/host-aware-sandbox.test.ts
+  s_23d5246ba086ae::t_535a6c02f28e45 166-183
+packages/adapters/src/host-aware-sandbox.ts
+  s_23d5246ba086ae::t_12b9b82ee14e89 169-173
+packages/adapters/src/run-computer.ts
+  s_23d5246ba086ae::t_7a4fd6db2edacc 1-6,8-38
+packages/adapters/src/thread-artifacts.ts
+  s_23d5246ba086ae::t_b2c2a0c8ceb32d 194-195
+packages/db/prisma/migrations/20261017120000_computer_running_since/migration.sql
+  s_23d5246ba086ae::t_4cba3735b3aa6e 1-4
+packages/db/prisma/schema.prisma
+  s_23d5246ba086ae::t_d90569b84f68e1 1838-1839
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a7eb5b0e1abe998ff6428b646f1f6ba58606f4ba",
+  "prompts": {},
+  "sessions": {
+    "s_0f22f0cb7a1da9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "625be235-0dcd-44f3-8f6c-a87fc99556cb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    },
+    "s_23d5246ba086ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b5e4d13-17bc-42b7-bf35-e6d781694216",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    },
+    "s_2bfbf56fed595e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a6d5b7a4-2b7a-4fb6-8d93-eec20ff4ef77",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
