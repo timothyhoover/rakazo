@@ -1,0 +1,23 @@
+packages/adapters/src/executor-readonly-approval.test.ts
+  s_ca24eb0e47a827::t_2a0a4a339fc405 1588-1606
+packages/adapters/src/messaging-delivery.test.ts
+  s_ca24eb0e47a827::t_917b74aaec24db 149,151-156
+packages/adapters/src/messaging-delivery.ts
+  s_ca24eb0e47a827::t_6fb7f5c346b765 305-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb8dd339ca22b960234870f59eff78b35a9a14c4",
+  "prompts": {},
+  "sessions": {
+    "s_ca24eb0e47a827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e075dae6-d091-4556-aad4-3bf2eeb184ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
