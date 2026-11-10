@@ -302,13 +302,15 @@ async function mirrorChannelRun(
     deps.prisma,
     { identityId: null, threadId: channel.threadId },
     messages.flatMap(({ message, text }) =>
-      splitOutboundBody(identity.provider, trusted ? text : `${fromLabel}: ${text}`).map((part, index) => ({
-        idempotencyKey: index === 0 ? `msg:${message.id}` : `msg:${message.id}:${index + 1}`,
-        kind: "group",
-        threadId: channel.threadId,
-        body: part,
-        sourceMessageId: message.id,
-      })),
+      splitOutboundBody(identity.provider, trusted ? text : `${fromLabel}: ${text}`).map(
+        (part, index) => ({
+          idempotencyKey: index === 0 ? `msg:${message.id}` : `msg:${message.id}:${index + 1}`,
+          kind: "group",
+          threadId: channel.threadId,
+          body: part,
+          sourceMessageId: message.id,
+        }),
+      ),
     ),
   );
 

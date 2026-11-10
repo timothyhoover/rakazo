@@ -1585,6 +1585,25 @@ describe("secret_request with a confirm-every-use secret", () => {
     expect(cardActions(f)).toEqual(["allow", "deny"]);
   });
 
+  // v0.9.0 explains a webhook card that overrode an Always allow, and offers it Allow once only.
+  // This card asks in every run, so it stays once-only without blaming the webhook.
+  it("asks once-only in a webhook run past a tool rule, without the webhook note", async () => {
+    const f = fixture({
+      name: "secret_request",
+      builtin: true,
+      trigger: "webhook",
+      rules: [toolRule],
+      autoReview: true,
+    });
+    f.setCalls([{ args: listed, executionId: "call-1" }]);
+    await f.run();
+    expect(reviewMock).not.toHaveBeenCalled();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(cardActions(f)).toEqual(["allow", "deny"]);
+    expect(askDetail(f)).not.toContain("webhook");
+    expect(f.effects[0]?.status).toBe("intended");
+  });
+
   it("uses an approval once: the next identical call asks again despite an allow rule", async () => {
     const rules: ActionApprovalRule[] = [];
     const f = fixture({ name: "secret_request", builtin: true, rules });

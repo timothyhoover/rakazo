@@ -146,9 +146,14 @@ function createDeps(overrides: {
     overrides.identity === null ? null : { ...identity, ...(overrides.identity ?? {}) };
   const prisma = {
     user: {
+      // A trusted group's routine posts read the owner's name.
       findUnique: vi.fn(
-        async (_query: { where: { id: string } }): Promise<{ deactivatedAt: Date | null } | null> =>
-          null,
+        async (_query: {
+          where: { id: string };
+        }): Promise<{ name?: string; deactivatedAt: Date | null } | null> => ({
+          name: "Alice Owner",
+          deactivatedAt: null,
+        }),
       ),
     },
     bot: {
@@ -210,7 +215,6 @@ function createDeps(overrides: {
         overrides.group && !where.NOT ? [{ channelId: "ch-1" }] : [],
       ),
     },
-    user: { findUnique: vi.fn(async () => ({ name: "Alice Owner" })) },
     agentConnection: {
       findUnique: vi.fn(async () =>
         overrides.connectionStatus === null
