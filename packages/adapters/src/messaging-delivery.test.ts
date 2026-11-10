@@ -591,6 +591,16 @@ describe("deliverMessagingOutbound", () => {
     );
   });
 
+  it("keeps another member's routine run out of the owner's trusted group", async () => {
+    const deps = createDeps({
+      run: { ...messagingRun, trigger: "routine", userId: "user-2" },
+      group: { otherMemberUserId: identity.userId },
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+    expect(deps.rows).toHaveLength(0);
+    expect(deps.sendToThread).not.toHaveBeenCalled();
+  });
+
   it("keeps scheduled routine replies out of a group with someone else in it", async () => {
     const deps = createDeps({
       run: { ...messagingRun, trigger: "routine" },

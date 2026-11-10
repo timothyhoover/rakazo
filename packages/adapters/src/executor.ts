@@ -1249,12 +1249,14 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
           : null;
         const botEmail = emailName ? `${emailName.name}@${deps.inboundEmailDomain}` : null;
         // The inbox is the owner's mail: read only in their own runs, never in a group or channel, and
-        // never for another bot, which may be answering someone else.
+        // never for another bot, which may be answering someone else. A trusted group keeps the
+        // owner's memory but is still a group, so it never gets the inbox either.
         const emailInbox =
           Boolean(botEmail) &&
           run.userId === bot.userId &&
           run.trigger !== "bot_message" &&
           !thread.groupId &&
+          !messagingChannelRun &&
           !nonOwnerChatRun;
         const userComputerOwnerId = userComputerOwner({
           trigger: run.trigger,

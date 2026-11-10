@@ -146,7 +146,12 @@ async function mirrorRun(
     return;
   } else if (run.trigger === "routine") {
     // Scheduled updates go to the bot's trusted group when it has one (so
-    // everyone in it sees them), otherwise to the linked DM below.
+    // everyone in it sees them), otherwise to the linked DM below. The group is the owner's
+    // chat too, so another Space member's routine run on this bot stays in the app.
+    const identity = await deps.prisma.messagingIdentity.findUnique({
+      where: { botId: run.botId },
+    });
+    if (!identity || identity.userId !== run.userId) return;
     const channel = await findTrustedMessagingChannelForBot(deps.prisma, run.botId);
     if (channel) {
       await mirrorChannelRun(deps, run, { channelId: channel.id });

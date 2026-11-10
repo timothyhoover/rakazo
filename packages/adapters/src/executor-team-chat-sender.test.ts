@@ -24,6 +24,10 @@ async function teamChatRun(input: {
   ownerAddress?: string | null;
   linkedAddresses?: string[];
   sharedChannel?: boolean;
+  /** A text-messaging run instead: the owner's DM, or a group of only the owner's numbers. */
+  messagingChat?: "dm" | "trusted group";
+  /** The bot has its own email inbox. */
+  botEmail?: boolean;
 }) {
   const [waking, ...batched] = input.senders.map((sender, index) => ({
     id: `external-${index}`,
@@ -89,7 +93,7 @@ async function teamChatRun(input: {
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.threadId,
         groupId: null,
-        externalConversationId: "conversation-1",
+        externalConversationId: input.messagingChat ? null : "conversation-1",
       })),
       update: vi.fn(async () => ({ nextMessageSeq: 2, nextEventSeq: 2 })),
     },
@@ -97,10 +101,13 @@ async function teamChatRun(input: {
       findMany: vi.fn(async () => []),
       findFirst: vi.fn(async () => null),
       findUnique: vi.fn(async () => ({
-        blocks: input.sharedChannel
-          ? [{ kind: "channel_message", channelId: "channel-1" }]
-          : [{ kind: "text", text: "Slack message from Pat:\n\nWhat do you remember?" }],
-        clientNonce: `teamchat:slack:${waking.providerEventId}`,
+        blocks:
+          input.sharedChannel || input.messagingChat === "trusted group"
+            ? [{ kind: "channel_message", channelId: "channel-1" }]
+            : [{ kind: "text", text: "Slack message from Pat:\n\nWhat do you remember?" }],
+        clientNonce: input.messagingChat
+          ? "messaging:event-0"
+          : `teamchat:slack:${waking.providerEventId}`,
       })),
       create: vi.fn(async ({ data }: { data: object }) => ({ id: "message-1", ...data })),
     },
@@ -213,8 +220,17 @@ async function teamChatRun(input: {
       findMany: vi.fn(async ({ where }: { where: { address: { in: string[] } } }) =>
         (input.linkedAddresses ?? [])
           .filter((address) => where.address.in.includes(address))
-          .map((address) => ({ address })),
+          .map((address) => ({ address, userId: run.userId })),
       ),
+    },
+    messagingChannel: {
+      findUnique: vi.fn(async () => ({
+        provider: "sendblue",
+        members: (input.linkedAddresses ?? []).map((address) => ({ address })),
+      })),
+    },
+    botEmailAddress: {
+      findUnique: vi.fn(async () => (input.botEmail ? { name: "assistant" } : null)),
     },
   };
   let request: AgentRunRequest | undefined;
@@ -254,6 +270,8 @@ async function teamChatRun(input: {
     },
     jobs: { enqueue: vi.fn(async () => undefined) },
     secrets: [],
+    ...(input.messagingChat ? { messaging: { hasIdentity: async () => true } } : {}),
+    ...(input.botEmail ? { inboundEmailDomain: "mail.example.test" } : {}),
   } as unknown as Parameters<typeof createRunExecutor>[0]);
   await executor.continueRun(run.id, "worker-1");
   if (!request) throw new Error("the run never reached the model");
@@ -324,5 +342,31 @@ describe("private skills in shared-channel prompts", () => {
     });
     expect(result.context).toContain("PRIVATE_SKILL_BODY");
     expect(result.context).toContain("PRIVATE_TAUGHT_HINT");
+  });
+});
+
+describe("the bot's email inbox in text-messaging runs", () => {
+  const inboxTools = ["read_email", "delete_email"];
+  const ownerNumber = "+15550000001";
+
+  it("stays out of a trusted group, which still keeps the owner's memory", async () => {
+    const result = await teamChatRun({
+      senders: [{ senderId: ownerNumber }],
+      messagingChat: "trusted group",
+      linkedAddresses: [ownerNumber],
+      botEmail: true,
+    });
+    expect(result.tools).toContain("remember");
+    expect(result.sawOwnerState).toBe(true);
+    for (const tool of inboxTools) expect(result.tools).not.toContain(tool);
+  });
+
+  it("is offered in the owner's own DM", async () => {
+    const result = await teamChatRun({
+      senders: [{ senderId: ownerNumber }],
+      messagingChat: "dm",
+      botEmail: true,
+    });
+    for (const tool of inboxTools) expect(result.tools).toContain(tool);
   });
 });
