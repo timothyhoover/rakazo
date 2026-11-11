@@ -848,6 +848,109 @@ describe.skipIf(!enabled)("typed replies to waiting cards (PostgreSQL)", () => {
     expect(await system.run.count({ where: { threadId: groupTarget.threadId } })).toBe(0);
   });
 
+  describe("two runs in one thread, each waiting on its own card", () => {
+    const signOff: MessageBlock = {
+      kind: "ask",
+      text: "Sign off phoenix-app#1797?",
+      status: "pending",
+      actions: [
+        { id: "choice-1", label: "Sign off phoenix-app#1797" },
+        { id: "choice-2", label: "not yet" },
+        { id: "choice-3", label: "Later" },
+      ],
+    };
+    const recommendations: MessageBlock = {
+      kind: "ask",
+      text: "Take my recommendations?",
+      status: "pending",
+      actions: [
+        { id: "choice-1", label: "Take all 4 recommendations" },
+        { id: "choice-2", label: "One by one" },
+        { id: "choice-3", label: "Later" },
+      ],
+    };
+    // The incident's shape: an older webhook check-in still waiting when a routine digest asks.
+    async function twoWaitingRuns() {
+      const older = await waitingCard(signOff, threadId, botId, "webhook");
+      const newer = await waitingCard(recommendations, threadId, botId, "routine");
+      return { older, newer };
+    }
+    function tap(fixture: { run: { id: string }; message: { id: string } }, answer: string) {
+      return runAsTenant(actor, () =>
+        answerRunInput(prisma, {
+          spaceId: actor.spaceId,
+          threadId,
+          runId: fixture.run.id,
+          messageId: fixture.message.id,
+          answeredByUserId: actor.userId,
+          answer,
+        }),
+      );
+    }
+    async function card(fixture: { message: { id: string } }) {
+      const { blocks } = await system.message.findUniqueOrThrow({
+        where: { id: fixture.message.id },
+      });
+      return (blocks as MessageBlock[])[0];
+    }
+
+    it("answers and resumes only the run whose card was tapped", async () => {
+      const { older, newer } = await twoWaitingRuns();
+      expect(await tap(newer, "choice-1")).toBe(true);
+
+      expect(await system.run.findUniqueOrThrow({ where: { id: newer.run.id } })).toMatchObject({
+        status: "queued",
+      });
+      expect(await card(newer)).toMatchObject({ status: "answered", answer: "choice-1" });
+      expect(
+        (await system.task.findUniqueOrThrow({ where: { id: newer.task.id } })).prompt,
+      ).toContain("Selected choice choice-1: Take all 4 recommendations");
+
+      // The other run's card shares the option id but was not tapped: it stays open.
+      await expectPending(older);
+      expect(await system.task.findUniqueOrThrow({ where: { id: older.task.id } })).toMatchObject({
+        prompt: older.task.prompt,
+      });
+      expect(await system.event.count({ where: { runId: older.run.id } })).toBe(0);
+    });
+
+    it("still answers the other card later, on its own", async () => {
+      const { older, newer } = await twoWaitingRuns();
+      expect(await tap(newer, "choice-1")).toBe(true);
+      expect(await tap(older, "choice-2")).toBe(true);
+
+      expect(await system.run.findUniqueOrThrow({ where: { id: older.run.id } })).toMatchObject({
+        status: "queued",
+      });
+      expect(await card(older)).toMatchObject({ status: "answered", answer: "choice-2" });
+      expect(
+        (await system.task.findUniqueOrThrow({ where: { id: older.task.id } })).prompt,
+      ).toContain("Selected choice choice-2: not yet");
+      // Answering the older card leaves the newer card's answer as tapped.
+      expect(await card(newer)).toMatchObject({ status: "answered", answer: "choice-1" });
+    });
+
+    it("refuses a repeated answer to a card that is already answered", async () => {
+      const { older, newer } = await twoWaitingRuns();
+      expect(await tap(newer, "choice-1")).toBe(true);
+      expect(await tap(newer, "choice-2")).toBe(false);
+      expect(await card(newer)).toMatchObject({ status: "answered", answer: "choice-1" });
+      await expectPending(older);
+    });
+
+    it("refuses an answer that pairs one run with the other run's card", async () => {
+      const { older, newer } = await twoWaitingRuns();
+      for (const [run, message] of [
+        [older, newer],
+        [newer, older],
+      ] as const) {
+        expect(await tap({ run: run.run, message: message.message }, "choice-1")).toBe(false);
+      }
+      await expectPending(older);
+      await expectPending(newer);
+    });
+  });
+
   it("rolls back retirement if accepting the new run fails", async () => {
     const fixture = await waitingCard();
     await createThreadMessage(system, {
