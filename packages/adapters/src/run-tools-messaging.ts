@@ -1,4 +1,5 @@
 import { posix } from "node:path";
+import { messagingDeliverJob } from "@rakazo/adapter-kit";
 import { ATTACHMENT_MAX_COUNT } from "@rakazo/contracts";
 import {
   BOT_MESSAGE_MAX_LENGTH,
@@ -7,6 +8,8 @@ import {
   redactSecrets,
   resolveBotAddress,
 } from "@rakazo/core";
+import { findTrustedMessagingChannelForBot } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 import {
   connectAgent,
   messageConnectedAgent,
@@ -14,9 +17,12 @@ import {
 } from "./agent-connections.js";
 import { startBackgroundHelper } from "./background-helpers.js";
 import { messageBot } from "./bot-messages.js";
+import { GROUP_CHAT_MESSAGE_MAX_LENGTH } from "./builtin-tools.js";
 import { endCallFromTool, requestUserCall } from "./call-request.js";
 import { normalizeWorkspacePath, resolveBotWorkspacePath } from "./computer-support.js";
 import { handoffToGroupBot } from "./group-handoff.js";
+import { insertOutboundRows } from "./messaging-delivery.js";
+import { splitOutboundBody } from "./messaging-platforms.js";
 import type { RunContext } from "./run-context.js";
 import {
   canPostLongTaskHeadsUp,
@@ -300,6 +306,51 @@ export const messagingTools: ToolHandlers = {
           }
         : { ok: true },
     );
+  },
+  async message_group_chat(ctx, call) {
+    const { deps, bot } = ctx;
+    const text = redactSecrets(String(call.args.message ?? ""), ctx.secrets).trim();
+    if (!text) return call.finish({ error: "message is required" });
+    if (text.length > GROUP_CHAT_MESSAGE_MAX_LENGTH) {
+      return call.finish({
+        error: `message exceeds the ${GROUP_CHAT_MESSAGE_MAX_LENGTH} character limit. Nothing was sent. Shorten it.`,
+      });
+    }
+    // Checked again at send time: someone may have joined or left since the run started.
+    const trusted = await findTrustedMessagingChannelForBot(deps.prisma, bot.id);
+    const [identity, channel] = trusted
+      ? await Promise.all([
+          deps.prisma.messagingIdentity.findUnique({ where: { botId: bot.id } }),
+          deps.prisma.messagingChannel.findUnique({ where: { id: trusted.id } }),
+        ])
+      : [null, null];
+    if (!identity || !channel) {
+      return call.finish({
+        error:
+          "You are not in a group chat whose members are all your owner's own. Nothing was sent.",
+      });
+    }
+    // Keyed by this call's effect, so a retried or resumed call never posts twice.
+    await insertOutboundRows(
+      deps.prisma,
+      { identityId: null, threadId: channel.threadId },
+      splitOutboundBody(identity.provider, text).map((part, index) => ({
+        idempotencyKey:
+          index === 0
+            ? `group-chat:${call.effectKey}`
+            : `group-chat:${call.effectKey}:${index + 1}`,
+        kind: "group",
+        threadId: channel.threadId,
+        body: part,
+      })),
+    );
+    await deps.jobs.enqueue(messagingDeliverJob()).catch((error) => {
+      getLogger().error("group chat delivery enqueue error", error);
+    });
+    return call.finish({
+      ok: true,
+      result: `Queued to ${channel.name ?? "the group chat"}; it arrives in a few seconds.`,
+    });
   },
   async message_bot(ctx, call) {
     const { deps, run, bot } = ctx;

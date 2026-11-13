@@ -90,6 +90,8 @@ async function runInSpace(space: Space, options: RunOptions = {}) {
     $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(prisma)),
     $queryRaw: vi.fn(async () => []),
     space: { findUnique: vi.fn(async () => null) },
+    // No trusted group: the bot's chat link has no group it shares only with its owner.
+    messagingIdentity: { findUnique: vi.fn(async () => null) },
     user: { findUnique: vi.fn(async () => null), findMany: users },
     spaceMember: {
       findUnique: vi.fn(async () => ({ id: "member-1" })),

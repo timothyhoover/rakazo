@@ -1317,6 +1317,16 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
             emailClaimable:
               Boolean(deps.inboundEmailDomain) && !emailName && run.userId === bot.userId,
             emailSend: Boolean(deps.email),
+            // Posting to the family group is for the owner's own chat with the bot, in the app
+            // or their linked DM, never from inside a group or an unattended run.
+            trustedGroupChat:
+              hasMessagingIdentity &&
+              run.userId === bot.userId &&
+              !thread.groupId &&
+              !messagingChannelRun &&
+              !nonOwnerChatRun &&
+              (ownerStartedRun || run.trigger === "messaging") &&
+              Boolean(await findTrustedMessagingChannelForBot(deps.prisma, bot.id)),
           }),
           // Cross-owner agent connections only exist for chat-linked bots. The chat link is its
           // creator's, and a connected agent's messages run as them, so only their runs may

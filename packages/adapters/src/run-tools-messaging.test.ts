@@ -13,6 +13,10 @@ const mocks = vi.hoisted(() => ({
   readWorkspaceFile: vi.fn(async (..._args: unknown[]) => ({
     bytes: new Uint8Array([1]),
   })) as ReturnType<typeof vi.fn>,
+  findTrustedMessagingChannelForBot: vi.fn(
+    async (..._args: unknown[]): Promise<{ id: string } | null> => ({ id: "ch-1" }),
+  ),
+  insertOutboundRows: vi.fn(async (..._args: unknown[]) => undefined),
   saveWorkspaceFile: vi.fn(async (..._args: unknown[]) => ({
     artifactId: "artifact-zip",
     block: {
@@ -25,6 +29,11 @@ const mocks = vi.hoisted(() => ({
   })),
 }));
 vi.mock("./bot-messages.js", () => ({ messageBot: mocks.messageBot }));
+vi.mock("@rakazo/db", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@rakazo/db")>()),
+  findTrustedMessagingChannelForBot: mocks.findTrustedMessagingChannelForBot,
+}));
+vi.mock("./messaging-delivery.js", () => ({ insertOutboundRows: mocks.insertOutboundRows }));
 vi.mock("./group-handoff.js", () => ({ handoffToGroupBot: mocks.handoffToGroupBot }));
 vi.mock("./run-tools-files.js", () => ({
   readWorkspaceFile: mocks.readWorkspaceFile,
@@ -315,5 +324,73 @@ describe("sending files to another bot", () => {
     ).resolves.toEqual({
       error: "site: not found, or your computer could not be read. Nothing was sent.",
     });
+  });
+});
+
+describe("message_group_chat", () => {
+  function groupContext() {
+    const enqueue = vi.fn(async () => undefined);
+    const ctx = {
+      deps: {
+        prisma: {
+          messagingIdentity: { findUnique: vi.fn(async () => ({ provider: "sendblue" })) },
+          messagingChannel: {
+            findUnique: vi.fn(async () => ({ threadId: "sendblue:grp-1", name: "Family" })),
+          },
+        },
+        jobs: { enqueue },
+      },
+      bot: { id: "bot-1" },
+      secrets: [],
+    } as unknown as RunContext;
+    return { ctx, enqueue };
+  }
+
+  beforeEach(() => {
+    mocks.insertOutboundRows.mockClear();
+    mocks.findTrustedMessagingChannelForBot.mockResolvedValue({ id: "ch-1" });
+  });
+
+  it("queues the message to the trusted group, keyed by the call", async () => {
+    const { ctx, enqueue } = groupContext();
+    await expect(
+      messagingTools.message_group_chat!(
+        ctx,
+        callWith("message_group_chat", { message: "Dinner at 7" }),
+      ),
+    ).resolves.toMatchObject({ ok: true });
+    expect(mocks.insertOutboundRows).toHaveBeenCalledWith(
+      ctx.deps.prisma,
+      { identityId: null, threadId: "sendblue:grp-1" },
+      [
+        {
+          idempotencyKey: "group-chat:effect-1",
+          kind: "group",
+          threadId: "sendblue:grp-1",
+          body: "Dinner at 7",
+        },
+      ],
+    );
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends nothing once the group is no longer all the owner's", async () => {
+    mocks.findTrustedMessagingChannelForBot.mockResolvedValue(null);
+    const { ctx } = groupContext();
+    await expect(
+      messagingTools.message_group_chat!(ctx, callWith("message_group_chat", {})),
+    ).resolves.toMatchObject({ error: expect.stringContaining("Nothing was sent") });
+    expect(mocks.insertOutboundRows).not.toHaveBeenCalled();
+  });
+
+  it("refuses an over-long message", async () => {
+    const { ctx } = groupContext();
+    await expect(
+      messagingTools.message_group_chat!(
+        ctx,
+        callWith("message_group_chat", { message: "x".repeat(2_001) }),
+      ),
+    ).resolves.toMatchObject({ error: expect.stringContaining("Nothing was sent") });
+    expect(mocks.insertOutboundRows).not.toHaveBeenCalled();
   });
 });

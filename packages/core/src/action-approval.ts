@@ -273,6 +273,7 @@ const OWN_STATE_RESULT_TOOLS = new Set([
   "generate_secret",
   "list_fleet",
   "list_secrets",
+  "message_group_chat",
   "message_user",
   "read_history",
   "recall_memory",

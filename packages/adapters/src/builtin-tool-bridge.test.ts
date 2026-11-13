@@ -28,6 +28,21 @@ const definitionBytes = (tools: typeof ownerChat) =>
   );
 
 describe("built-in tool bridge", () => {
+  it("offers message_group_chat only to the owner's chat with a trusted group", () => {
+    expect(ownerChat.some((tool) => tool.name === "message_group_chat")).toBe(false);
+    const withGroup = selectBuiltinToolsForRun({
+      graphicalToolsAllowed: false,
+      groupId: null,
+      trigger: "user",
+      semanticMemoryEnabled: false,
+      messagingChannelRun: false,
+      trustedGroupChat: true,
+    });
+    expect(
+      partitionTools(withGroup).listed.some((tool) => tool.name === "message_group_chat"),
+    ).toBe(true);
+  });
+
   it("lists a pinned tool set within a byte budget on an owner chat run", () => {
     const { listed, deferred } = partitionTools(ownerChat);
     expect(listed.map((tool) => tool.name).sort()).toEqual([

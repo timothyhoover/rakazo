@@ -132,6 +132,8 @@ export function selectBuiltinToolsForRun(options: {
   emailClaimable?: boolean;
   /** The inbox may be read and this server can send email. */
   emailSend?: boolean;
+  /** The owner's own chat with a bot that is in a group whose members are all the owner's. */
+  trustedGroupChat?: boolean;
 }) {
   const disabled = disabledBuiltinToolSet(options.disabledBuiltinTools);
   const ownerStartedRun = isOwnerStartedRun(options.trigger, Boolean(options.followUpFromUser));
@@ -186,6 +188,7 @@ export function selectBuiltinToolsForRun(options: {
       (options.voiceCall || tool.name !== "end_call") &&
       (emailMailbox || !EMAIL_INBOX_TOOL_NAMES.has(tool.name)) &&
       ((emailMailbox && options.emailSend) || tool.name !== "send_email") &&
+      (options.trustedGroupChat || tool.name !== "message_group_chat") &&
       (emailClaimOffered || tool.name !== "claim_email_address") &&
       (options.userComputer || tool.name !== "user_computer_shell") &&
       ((options.userComputer && options.userComputerScreen) ||

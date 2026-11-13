@@ -31,6 +31,9 @@ import { SCHEDULE_TIMING_FIELDS } from "./schedule-tools.js";
 import { messageUserMaxLength } from "./user-progress.js";
 import { MAX_WEB_FETCH_OFFSET } from "./web-limits.js";
 
+/** A group text is read on a phone; longer belongs in a page or a file. */
+export const GROUP_CHAT_MESSAGE_MAX_LENGTH = 2_000;
+
 // The owner flag can land in process.env after static imports run (loadRootEnv
 // parses .env once the entry module is already executing), so the model-facing
 // surface is built lazily on first tool access instead of at module scope.
@@ -620,6 +623,22 @@ export const builtinAgentTools: ConnectorTool[] = [
         },
         required: ["message"],
       };
+    },
+  },
+  {
+    name: "message_group_chat",
+    description:
+      "Send a message now to the group chat you are in whose members are all your owner's own (for example, their family's group text). Use it when your owner asks you to tell the group something. It arrives as plain text in their chat app, so do not use markdown. Your reply in this chat does not reach the group.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        message: {
+          type: "string",
+          maxLength: GROUP_CHAT_MESSAGE_MAX_LENGTH,
+          description: "Exactly what the group should read.",
+        },
+      },
+      required: ["message"],
     },
   },
   {
