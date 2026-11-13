@@ -1012,6 +1012,8 @@ function createChannelDeps(
     runs?: Array<{ id: string; messages: unknown[] }>;
     /** Accounts that are deactivated. */
     deactivated?: string[];
+    /** Every member is linked to the poster's owner. */
+    trusted?: boolean;
   } = {},
 ) {
   const text = overrides.text ?? "found it";
@@ -1103,6 +1105,7 @@ function createChannelDeps(
         return null;
       }),
       update: vi.fn(async () => posterIdentity),
+      findMany: vi.fn(async () => (overrides.trusted ? [{ userId: posterIdentity.userId }] : [])),
     },
     messagingChannel: {
       findUnique: vi.fn(async () => ({
@@ -1111,8 +1114,8 @@ function createChannelDeps(
         threadId: "sendblue:grp-1",
         name: "Family",
         introPostedAt: null,
-        // No roster, so the group is untrusted and keeps the owner attribution.
-        members: [],
+        // Without a roster the group is untrusted and keeps the owner attribution.
+        members: overrides.trusted ? [{ address: posterIdentity.address }] : [],
       })),
     },
     messagingChannelMember: {
@@ -1244,6 +1247,75 @@ describe("deliverMessagingOutbound channel runs", () => {
     expect(deps.sendToThread).not.toHaveBeenCalled();
     expect(deps.contextMessages).toEqual([]);
     expect(deps.sendUserMessage).not.toHaveBeenCalled();
+  });
+
+  it("posts a trusted group's reply after an Allow tap on an approval card", async () => {
+    const deps = createChannelDeps({
+      trusted: true,
+      messages: [
+        {
+          id: "ask-1",
+          blocks: [
+            {
+              kind: "ask",
+              text: "Review before web_fetch → example.com",
+              status: "answered",
+              answer: "always",
+              actions: [
+                { id: "allow", label: "Allow once" },
+                { id: "always", label: "Always allow example.com" },
+                { id: "deny", label: "Deny" },
+              ],
+            },
+          ],
+        },
+        { id: "reply-1", blocks: [{ kind: "text", text: "Set aside $50 for it" }] },
+      ],
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+    expect(deps.sendToThread).toHaveBeenCalledWith(
+      { threadId: "sendblue:grp-1", body: "Set aside $50 for it" },
+      context,
+    );
+  });
+
+  it("keeps a trusted group's reply private after a typed answer", async () => {
+    const deps = createChannelDeps({
+      trusted: true,
+      messages: [
+        {
+          id: "ask-1",
+          blocks: [
+            { kind: "ask", text: "Details?", input: "text", status: "answered", answer: "Private" },
+          ],
+        },
+        { id: "reply-1", blocks: [{ kind: "text", text: "Reply containing private detail" }] },
+      ],
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+    expect(deps.sendToThread).not.toHaveBeenCalled();
+  });
+
+  it("keeps an untrusted group's reply private after an Allow tap", async () => {
+    const deps = createChannelDeps({
+      messages: [
+        {
+          id: "ask-1",
+          blocks: [
+            {
+              kind: "ask",
+              text: "Review before web_fetch → example.com",
+              status: "answered",
+              answer: "allow",
+              actions: [{ id: "allow", label: "Allow once" }],
+            },
+          ],
+        },
+        { id: "reply-1", blocks: [{ kind: "text", text: "Reply" }] },
+      ],
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+    expect(deps.sendToThread).not.toHaveBeenCalled();
   });
 
   it("can still publish a group reply alongside an unanswered ask", async () => {

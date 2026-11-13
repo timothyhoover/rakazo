@@ -248,6 +248,15 @@ export async function insertOutboundRows(
   });
 }
 
+/** The card was answered by pressing one of its own buttons, with nothing typed. */
+function isButtonAnswer(block: Extract<MessageBlock, { kind: "ask" }>): boolean {
+  return (
+    !block.input &&
+    block.answer !== undefined &&
+    (block.actions ?? []).some((action) => action.id === block.answer)
+  );
+}
+
 /**
  * Channel runs post to the group with an attribution prefix, then fan the
  * post out internally to peer approved bots: context only by default, a
@@ -286,10 +295,15 @@ async function mirrorChannelRun(
   });
   // Ask answers are entered privately in the app. Check the same snapshot as
   // the replies so a resumed run cannot publish an answer-influenced response.
+  // In a trusted group, tapping one of a card's buttons (Allow, Deny) reveals
+  // nothing private, so the reply still goes out; typing into a card holds it.
   if (
     replies.some((message) =>
       (message.blocks as MessageBlock[]).some(
-        (block) => block.kind === "ask" && block.status === "answered",
+        (block) =>
+          block.kind === "ask" &&
+          block.status === "answered" &&
+          !(trusted && isButtonAnswer(block)),
       ),
     )
   )
