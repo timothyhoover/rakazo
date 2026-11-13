@@ -1,0 +1,30 @@
+packages/adapters/src/executor.ts
+  s_ecfd0ffbf9425e::t_5078ab086ec9b9 1356-1364
+  s_ecfd0ffbf9425e::t_3b0d7701531403 46
+packages/adapters/src/run-trust.ts
+  s_ecfd0ffbf9425e::t_ee6f21a10e0f9f 112-113,118
+  s_ecfd0ffbf9425e::t_a83e6ad1e4477d 67-68,80
+packages/db/src/messaging.ts
+  s_ecfd0ffbf9425e::t_06b7f3d704daa4 233-271
+  s_ecfd0ffbf9425e::t_fbc8d0d97d456f 2
+packages/adapters/src/run-trust.test.ts
+  s_ecfd0ffbf9425e::t_98ebeda0a305ed 1-3,37-70
+packages/db/src/messaging.test.ts
+  s_ecfd0ffbf9425e::t_75e67f6f1d9ce6 7,339-380
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "527f6cf662c18f597dd446a4015adef5e883ad11",
+  "prompts": {},
+  "sessions": {
+    "s_ecfd0ffbf9425e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "779634b3-4328-41f2-b64f-9bd5ca224c22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
