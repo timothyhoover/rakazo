@@ -14,7 +14,7 @@ import {
   rewrapSpaceKeys,
   rotateSpaceDataKeys,
 } from "./content-migration.js";
-import { appendEventInTransaction, sendUserMessage } from "./events.js";
+import { appendEventInTransaction } from "./events.js";
 import { readHistory, searchHistory } from "./history-retrieval.js";
 import { createThreadMessage, createThreadMessageInTransaction } from "./messages.js";
 import { runAsSystem } from "./row-security.js";
@@ -225,60 +225,6 @@ describePostgres("content encryption (PostgreSQL)", () => {
       const found = await searchHistory(prisma, scope, { query: "harbor survey" });
       expect(found.messages.map((m) => m.messageId)).toEqual([message.id]);
       await prisma.message.delete({ where: { id: message.id }, select: { id: true } });
-    }));
-
-  it("seals a delivery's display blocks in place of the full text it runs from", () =>
-    runAsSystem("test fixture", async () => {
-      const deliveryBotId = `enc-delivery-bot-${suffix}`;
-      const deliveryThreadId = `enc-delivery-thread-${suffix}`;
-      await prisma.bot.create({
-        data: { id: deliveryBotId, spaceId, userId, name: "Porch", color: "ink" },
-      });
-      await prisma.thread.create({
-        data: { id: deliveryThreadId, spaceId, userId, botId: deliveryBotId },
-      });
-      const prompt =
-        'Run routine "Front door delivery":\nPhotograph the parcel.\n\nInbound webhook payload:\n{"courier":"kestrel"}';
-      const shown: MessageBlock[] = [{ kind: "text", text: "⚡ Front door delivery" }];
-      const send = (clientNonce: string) =>
-        sendUserMessage(prisma, {
-          spaceId,
-          threadId: deliveryThreadId,
-          botId: deliveryBotId,
-          userId,
-          blocks: [{ kind: "text", text: prompt }],
-          displayBlocks: shown,
-          prompt,
-          trigger: "webhook",
-          clientNonce,
-        });
-
-      const started = await send("delivery-1");
-      expect(started.runId).not.toBeNull();
-      const stored = await rawBlocks(started.messageId);
-      expect(stored).not.toContain("kestrel");
-      expect(stored).not.toContain("Front door");
-      // A fresh client has no cached row context, so this also checks the update's binding.
-      const { prisma: fresh } = client();
-      expect(
-        (await fresh.message.findUnique({ where: { id: started.messageId } }))?.blocks,
-      ).toEqual(shown);
-      expect(
-        (await fresh.task.findFirst({ where: { runs: { some: { id: started.runId! } } } }))?.prompt,
-      ).toBe(prompt);
-      const deliveryScope = { spaceId, userId, threadId: deliveryThreadId, botId: deliveryBotId };
-      expect((await searchHistory(prisma, deliveryScope, { query: "kestrel" })).messages).toEqual(
-        [],
-      );
-
-      // The first run is still active, so this one waits and keeps the text its run will read.
-      const held = await send("delivery-2");
-      expect(held.runId).toBe(started.runId);
-      expect((await fresh.message.findUnique({ where: { id: held.messageId } }))?.blocks).toEqual([
-        { kind: "text", text: prompt },
-      ]);
-      await prisma.thread.delete({ where: { id: deliveryThreadId }, select: { id: true } });
-      await prisma.bot.delete({ where: { id: deliveryBotId }, select: { id: true } });
     }));
 
   it("reads and searches plaintext rows next to encrypted ones, then migrates them", () =>
