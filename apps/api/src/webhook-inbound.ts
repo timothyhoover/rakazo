@@ -341,15 +341,11 @@ export async function deliverWebhookEvent(
     threadId: target.threadId,
     botId: target.bot.id,
     userId: target.bot.userId,
-    blocks: [{ kind: "text", text: promptText }, ...artifactBlocks],
-    ...(input.routines.length > 0 && compactInboundDisplay()
-      ? {
-          displayBlocks: [
-            { kind: "text", text: inboundRoutineDisplayLine(input.routines) },
-            ...artifactBlocks,
-          ],
-        }
-      : {}),
+    blocks: [
+      { kind: "delivery" },
+      { kind: "text", text: promptText },
+      ...(input.artifacts ?? []).map(messageBlockForArtifact),
+    ],
     prompt: promptText,
     trigger: "webhook",
     clientNonce,
