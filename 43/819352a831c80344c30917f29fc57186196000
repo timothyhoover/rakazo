@@ -1,0 +1,45 @@
+packages/adapters/src/builtin-tools.ts
+  s_ecfd0ffbf9425e::t_b37e448c18cd47 34-36
+  s_ecfd0ffbf9425e::t_d340a28402ddf6 629-641
+  s_ecfd0ffbf9425e::t_468ed506837546 628
+  s_ecfd0ffbf9425e::t_77f7b51748fadd 642-643
+packages/adapters/src/run-tool-selection.ts
+  s_ecfd0ffbf9425e::t_afe1503ddfb089 191
+  s_ecfd0ffbf9425e::t_af8448c28d4354 135-136
+packages/adapters/src/run-tools-messaging.ts
+  s_ecfd0ffbf9425e::t_c624004c956529 2,11-12,20
+  s_ecfd0ffbf9425e::t_eeb8a25b79d436 310-351
+  s_ecfd0ffbf9425e::t_f1a9bd533bca75 352-354
+  s_ecfd0ffbf9425e::t_3abad9376625c1 24-25
+packages/adapters/src/executor.ts
+  s_ecfd0ffbf9425e::t_adb53552d43c5b 1320-1326,1328-1329
+  s_ecfd0ffbf9425e::t_53012b04fed9ff 1327
+packages/adapters/src/executor-shared-space-authors.test.ts
+  s_ecfd0ffbf9425e::t_497a6a873713fa 93-94
+packages/adapters/src/builtin-tool-bridge.test.ts
+  s_ecfd0ffbf9425e::t_601b0a262028c7 31-45
+packages/adapters/src/builtin-tool-bridge.ts
+  s_ecfd0ffbf9425e::t_1aa7d2b8a3ffaf 39
+packages/adapters/src/run-tools-messaging.test.ts
+  s_ecfd0ffbf9425e::t_ae5c6784671f53 16-19,32-36,329-396
+packages/contracts/src/builtin-tools.ts
+  s_ecfd0ffbf9425e::t_7dd7bb34406cf7 43
+packages/core/src/action-approval.ts
+  s_ecfd0ffbf9425e::t_62d7655dc22143 276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43819352a831c80344c30917f29fc57186196000",
+  "prompts": {},
+  "sessions": {
+    "s_ecfd0ffbf9425e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "779634b3-4328-41f2-b64f-9bd5ca224c22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
