@@ -1,4 +1,5 @@
 import type { RealtimeFanout } from "@rakazo/adapter-kit";
+import type { MessageBlock } from "@rakazo/contracts";
 import { BOT_SECRET_VALUE_MAX_LENGTH, encodeLoginSecret } from "@rakazo/contracts";
 import {
   TAKEOVER_COMPUTER_DONE_STATE,
@@ -4365,6 +4366,111 @@ describe("sendUserMessage", () => {
         }),
       }),
     );
+  });
+
+  describe("displayBlocks", () => {
+    const full: MessageBlock[] = [
+      {
+        kind: "text",
+        text: 'Run routine "Front door delivery":\nLook.\n\nInbound webhook payload:\n{}',
+      },
+    ];
+    const shown: MessageBlock[] = [{ kind: "text", text: "⚡ Front door delivery" }];
+
+    function busyTx(activeRuns: unknown[]) {
+      return {
+        $queryRaw: vi.fn(async () => []),
+        space: { findUnique: vi.fn() },
+        thread: {
+          update: vi
+            .fn()
+            .mockResolvedValueOnce({ nextMessageSeq: 5 })
+            .mockResolvedValueOnce({ nextEventSeq: 9 }),
+        },
+        message: {
+          create: vi.fn().mockResolvedValue({ id: "message-1", seq: 4 }),
+          update: vi.fn().mockResolvedValue({ id: "message-1" }),
+        },
+        steeringMessage: { create: vi.fn() },
+        task: { create: vi.fn().mockResolvedValue({ id: "task-1" }) },
+        run: {
+          create: vi.fn().mockResolvedValue({ id: "run-1" }),
+          findMany: vi.fn().mockResolvedValue(activeRuns),
+          findUnique: vi.fn().mockResolvedValue({ status: "queued" }),
+        },
+        event: {
+          create: vi.fn(async ({ data }: { data: { seq: number; type: string } }) => ({
+            ...event(data.seq),
+            type: data.type,
+          })),
+        },
+      };
+    }
+
+    async function send(tx: ReturnType<typeof busyTx>) {
+      const prisma = {
+        $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+      } as unknown as PrismaClient;
+      return sendUserMessage(prisma, {
+        spaceId: "workspace-1",
+        threadId: "thread-1",
+        botId: "bot-1",
+        userId: "user-1",
+        blocks: full,
+        displayBlocks: shown,
+        prompt: (full[0] as { text: string }).text,
+        trigger: "webhook",
+      });
+    }
+
+    it("shows them on a message that starts its own run, which works from the full prompt", async () => {
+      const tx = busyTx([]);
+      await expect(send(tx)).resolves.toMatchObject({ messageId: "message-1", runId: "run-1" });
+
+      expect(tx.task.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ prompt: (full[0] as { text: string }).text }),
+        }),
+      );
+      expect(tx.message.update).toHaveBeenCalledWith({
+        where: { id: "message-1" },
+        data: { blocks: shown },
+      });
+      expect(tx.event.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            type: "thread.message.created",
+            payload: expect.objectContaining({ blocks: shown }),
+          }),
+        }),
+      );
+    });
+
+    it("keeps the full blocks on a message held for a busy run, whose continuation reads them", async () => {
+      const tx = busyTx([{ id: "run-0", taskId: "task-0", trigger: "user", userId: "user-1" }]);
+      await expect(send(tx)).resolves.toMatchObject({ messageId: "message-1", runId: "run-0" });
+
+      expect(tx.task.create).not.toHaveBeenCalled();
+      expect(tx.steeringMessage.create).toHaveBeenCalledWith({
+        data: {
+          messageId: "message-1",
+          botId: "bot-1",
+          userId: "user-1",
+          runId: null,
+          originTrigger: "webhook",
+        },
+      });
+      expect(tx.message.update).toHaveBeenCalledTimes(1);
+      expect(tx.message.update).toHaveBeenCalledWith({
+        where: { id: "message-1" },
+        data: { runId: "run-0" },
+      });
+      expect(tx.event.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ payload: expect.objectContaining({ blocks: full }) }),
+        }),
+      );
+    });
   });
 
   it("persists steering instead of starting a parallel run when the bot is busy", async () => {

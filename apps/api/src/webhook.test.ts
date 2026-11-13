@@ -6,11 +6,12 @@ import {
   GithubWebhookEmulator,
   InfisicalSecretStore,
 } from "@rakazo/adapters";
+import { inboundRoutinePrompts } from "@rakazo/core";
 import { SpaceDeletionInProgressError } from "@rakazo/db";
 import { createLogger, createTestSink } from "@rakazo/logging";
 import { requestLogging } from "@rakazo/logging/hono";
 import { Hono } from "hono";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { infisicalFake } from "../../../packages/adapters/src/secret-store-fake.js";
 import { readBoundedBody } from "./http-body.js";
 import type { WebhookDeps } from "./webhook.js";
@@ -23,7 +24,7 @@ import {
   WEBHOOK_MAX_BODY_BYTES,
   WEBHOOK_SECRET_KIND,
 } from "./webhook.js";
-import { loadWebhookTarget } from "./webhook-inbound.js";
+import { deliverWebhookEvent, loadWebhookTarget } from "./webhook-inbound.js";
 
 const SECRET = "webhook-test-secret-value-32chars!!";
 const WEBHOOK_ROUTINE = { id: "routine-1", name: "Triage", prompt: "Triage this event." };
@@ -1356,5 +1357,132 @@ describe("webhook secret cache", () => {
     expect(load).toHaveBeenCalledTimes(1_001);
     await loadWebhookTarget(deps, cache, "bot-1");
     expect(load).toHaveBeenCalledTimes(1_002);
+  });
+});
+
+describe("COMPACT_INBOUND_DISPLAY", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  const target = { bot: { id: "bot-1", spaceId: "ws-1", userId: "user-1" }, threadId: "thread-1" };
+  const frontDoor = {
+    name: "Front door delivery",
+    prompt: "Photograph the parcel and tell me who left it.",
+    modelProvider: null,
+    modelId: null,
+    thinkingLevel: null,
+  };
+  const triage = {
+    name: "Triage",
+    prompt: "Triage this event.",
+    modelProvider: null,
+    modelId: null,
+    thinkingLevel: null,
+  };
+  const payload = formatWebhookPrompt({ event: "doorbell.ring", camera: "front" });
+  const artifact = { id: "artifact-1", name: "door.jpg", mimeType: "image/jpeg", size: 1234 };
+
+  async function deliver(
+    routines: Array<typeof frontDoor>,
+    input: { prompt?: string; artifacts?: Array<typeof artifact> } = {},
+  ) {
+    const deps = createDeps();
+    await deliverWebhookEvent(deps, target, {
+      prompt: input.prompt ?? payload,
+      routines,
+      source: "webhook",
+      idempotencyKey: "delivery-1",
+      ...(input.artifacts ? { artifacts: input.artifacts } : {}),
+    });
+    return deps.sendUserMessage.mock.calls[0]![0];
+  }
+
+  it("leaves a routine delivery unchanged when unset", async () => {
+    const sent = await deliver([frontDoor], { artifacts: [artifact] });
+    expect(sent).not.toHaveProperty("displayBlocks");
+    expect(sent.blocks[0]).toEqual({ kind: "text", text: sent.prompt });
+    expect(sent.blocks).toHaveLength(2);
+    expect(sent.prompt).toBe(
+      [
+        'Run routine "Front door delivery":',
+        "Photograph the parcel and tell me who left it.",
+        "",
+        "Inbound webhook payload:",
+        payload,
+      ].join("\n"),
+    );
+  });
+
+  it.each(["", "0", "false", "no"])("stays off for %j", async (value) => {
+    vi.stubEnv("COMPACT_INBOUND_DISPLAY", value);
+    const sent = await deliver([frontDoor]);
+    expect(sent).not.toHaveProperty("displayBlocks");
+    expect(sent.blocks).toEqual([{ kind: "text", text: sent.prompt }]);
+  });
+
+  it("shows one line naming the routine and runs the full prompt", async () => {
+    const full = await deliver([frontDoor], { artifacts: [artifact] });
+    vi.stubEnv("COMPACT_INBOUND_DISPLAY", "1");
+    const sent = await deliver([frontDoor], { artifacts: [artifact] });
+
+    expect(sent.displayBlocks).toEqual([
+      { kind: "text", text: "⚡ Front door delivery" },
+      full.blocks[1],
+    ]);
+    // The task prompt, the full blocks a held delivery keeps, and the nonce do not change.
+    expect(sent.prompt).toBe(full.prompt);
+    expect(sent.blocks).toEqual(full.blocks);
+    expect(sent.clientNonce).toBe(full.clientNonce);
+    // Run trust still finds the owner's routine instructions in the task prompt.
+    expect(inboundRoutinePrompts(sent.prompt, [frontDoor])).toEqual([frontDoor.prompt]);
+  });
+
+  it("accepts true in any case", async () => {
+    vi.stubEnv("COMPACT_INBOUND_DISPLAY", " TRUE ");
+    const sent = await deliver([frontDoor]);
+    expect(sent.displayBlocks).toEqual([{ kind: "text", text: "⚡ Front door delivery" }]);
+  });
+
+  it("joins several routines' names on one line", async () => {
+    const full = await deliver([triage, frontDoor]);
+    vi.stubEnv("COMPACT_INBOUND_DISPLAY", "true");
+    const sent = await deliver([triage, frontDoor]);
+
+    expect(sent.displayBlocks).toEqual([{ kind: "text", text: "⚡ Triage · Front door delivery" }]);
+    expect(sent.prompt).toBe(full.prompt);
+    expect(inboundRoutinePrompts(sent.prompt, [triage, frontDoor])).toEqual([
+      triage.prompt,
+      frontDoor.prompt,
+    ]);
+  });
+
+  it("keeps a routine name on one line", async () => {
+    vi.stubEnv("COMPACT_INBOUND_DISPLAY", "1");
+    const sent = await deliver([{ ...frontDoor, name: " Front door\n  delivery " }]);
+    expect(sent.displayBlocks).toEqual([{ kind: "text", text: "⚡ Front door delivery" }]);
+  });
+
+  it("leaves a delivery with no routine unchanged", async () => {
+    vi.stubEnv("COMPACT_INBOUND_DISPLAY", "1");
+    const sent = await deliver([], { prompt: "[Email from your owner]\n\nhello" });
+    expect(sent).not.toHaveProperty("displayBlocks");
+    expect(sent.prompt).toBe("[Email from your owner]\n\nhello");
+    expect(sent.blocks).toEqual([{ kind: "text", text: sent.prompt }]);
+  });
+
+  it("applies to a delivery through the webhook route", async () => {
+    vi.stubEnv("COMPACT_INBOUND_DISPLAY", "1");
+    const deps = createDeps({ routines: [WEBHOOK_ROUTINE] });
+    const res = await mount(deps).request("/api/v1/bots/bot-1/webhook", {
+      method: "POST",
+      headers: { authorization: `Bearer ${SECRET}`, "content-type": "application/json" },
+      body: JSON.stringify({ event: "ci.failed", repo: "rakazo" }),
+    });
+    expect(res.status).toBe(200);
+    const sent = deps.sendUserMessage.mock.calls[0]![0];
+    expect(sent.displayBlocks).toEqual([{ kind: "text", text: "⚡ Triage" }]);
+    expect(sent.prompt).toMatch(
+      /^Run routine "Triage":\nTriage this event\.\n\nInbound webhook payload:\n/,
+    );
+    expect(sent.prompt).toContain('"repo": "rakazo"');
   });
 });

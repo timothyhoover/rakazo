@@ -19,6 +19,7 @@ export type WebhookEvents = {
     botId: string;
     userId: string;
     blocks: MessageBlock[];
+    displayBlocks?: MessageBlock[];
     prompt: string;
     trigger: "webhook";
     clientNonce?: string;
@@ -280,6 +281,20 @@ export async function webhookDeliveryResponse(
   }
 }
 
+/**
+ * Self-hosted setting: COMPACT_INBOUND_DISPLAY=1 (or true) shows a delivery that runs routines as
+ * one line naming them. The run still works from the routines' instructions and the payload.
+ */
+export function compactInboundDisplay(env: Record<string, string | undefined> = process.env) {
+  const value = (env.COMPACT_INBOUND_DISPLAY ?? "").trim().toLowerCase();
+  return value === "1" || value === "true";
+}
+
+/** The one line a compact delivery shows, e.g. `⚡ Front door delivery`. */
+export function inboundRoutineDisplayLine(routines: ReadonlyArray<{ name: string }>): string {
+  return `⚡ ${routines.map((routine) => routine.name.replace(/\s+/g, " ").trim()).join(" · ")}`;
+}
+
 export async function deliverWebhookEvent(
   deps: Pick<WebhookDeps, "events" | "jobs">,
   target: InboundTarget,
@@ -319,16 +334,22 @@ export async function deliverWebhookEvent(
     ? inboundDeliveryClientNonce(input.source, target.bot.id, input.idempotencyKey)
     : undefined;
   const pin = inboundRoutineModelPin(input.routines);
+  const artifactBlocks = (input.artifacts ?? []).map(messageBlockForArtifact);
 
   const sent = await deps.events.sendUserMessage({
     spaceId: target.bot.spaceId,
     threadId: target.threadId,
     botId: target.bot.id,
     userId: target.bot.userId,
-    blocks: [
-      { kind: "text", text: promptText },
-      ...(input.artifacts ?? []).map(messageBlockForArtifact),
-    ],
+    blocks: [{ kind: "text", text: promptText }, ...artifactBlocks],
+    ...(input.routines.length > 0 && compactInboundDisplay()
+      ? {
+          displayBlocks: [
+            { kind: "text", text: inboundRoutineDisplayLine(input.routines) },
+            ...artifactBlocks,
+          ],
+        }
+      : {}),
     prompt: promptText,
     trigger: "webhook",
     clientNonce,

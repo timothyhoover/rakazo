@@ -169,6 +169,11 @@ export interface SendUserMessageInput {
   /** The person who wrote the message; omitted when the sender is not a known user. */
   authorUserId?: string;
   blocks: MessageBlock[];
+  /**
+   * Shown in place of `blocks` when this message starts its own run, which works from `prompt`.
+   * A message held for a busy run keeps `blocks`: its continuation reads them as its prompt.
+   */
+  displayBlocks?: MessageBlock[];
   prompt: string;
   trigger: "user" | "follow_up" | "webhook" | "messaging";
   clientNonce?: string;
@@ -500,6 +505,12 @@ export async function sendUserMessage(
         if (input.linkMessageToRun) {
           await tx.message.update({ where: { id: message.id }, data: { runId: run.id } });
         }
+        if (input.displayBlocks) {
+          await tx.message.update({
+            where: { id: message.id },
+            data: { blocks: input.displayBlocks as Prisma.InputJsonValue },
+          });
+        }
       } else if (createRun && busy) {
         const held = !steersRun(busy);
         await tx.steeringMessage.create({
@@ -532,7 +543,7 @@ export async function sendUserMessage(
         payload: {
           messageId: message.id,
           role: "user",
-          blocks: input.blocks,
+          blocks: run && input.displayBlocks ? input.displayBlocks : input.blocks,
           author,
           // Carries the call id on the live event so a spoken turn groups into the
           // call card immediately, instead of after a refetch reads the nonce.

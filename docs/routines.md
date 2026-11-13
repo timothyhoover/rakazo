@@ -66,6 +66,14 @@ Runs when the bot receives a message in Slack. Needs [Slack connected](./messagi
 > Runs started by a webhook or an outside message follow stricter [approval](./approvals.md) rules,
 > since outside text could steer what the bot does.
 
+A delivery that runs routines appears in the bot's chat as the routines' instructions followed by
+what arrived. Self-hosted servers can set `COMPACT_INBOUND_DISPLAY=1` on the API to show it as one
+line naming the routines instead, such as `⚡ Front door delivery`. The run still gets the
+instructions and the full delivery, and attached files still show. A delivery that arrives while
+the bot is busy keeps the full text, since its run starts from that message later. Later chats
+with the bot see only the short line, and search no longer finds the delivery's text. Unset,
+nothing changes.
+
 ## Test, pause and review
 
 - **Test run** runs a saved routine now.
