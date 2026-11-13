@@ -1,0 +1,22 @@
+packages/adapters/src/messaging-delivery.ts
+  s_ecfd0ffbf9425e::t_9c08d0552ef0ce 251-259
+  s_ecfd0ffbf9425e::t_cb5276307a3d14 298-299,303-306
+packages/adapters/src/messaging-delivery.test.ts
+  s_ecfd0ffbf9425e::t_90f92b33ecc0c1 1015-1016,1108,1117-1118,1252-1320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d14d792b7bb7087b128719d6ee6cc61b9aafa0d",
+  "prompts": {},
+  "sessions": {
+    "s_ecfd0ffbf9425e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "779634b3-4328-41f2-b64f-9bd5ca224c22",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
