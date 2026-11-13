@@ -1,0 +1,23 @@
+apps/api/src/webhook.test.ts
+  s_ecfd0ffbf9425e::t_45d2d1a3703c53 13,26
+packages/db/src/content-encryption.postgres.test.ts
+  s_ecfd0ffbf9425e::t_8eba607a0232d6 17
+packages/db/src/events.ts
+  s_ecfd0ffbf9425e::t_c138aa2d20d985 544
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2bbad1edaf04c926409f318c34fbf68d05771606",
+  "prompts": {},
+  "sessions": {
+    "s_ecfd0ffbf9425e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "779634b3-4328-41f2-b64f-9bd5ca224c22",
+        "model": "unknown"
+      },
+      "human_author": "Timothy Hoover <timmchoover@gmail.com>"
+    }
+  }
+}
