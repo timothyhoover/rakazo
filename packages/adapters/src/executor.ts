@@ -43,6 +43,7 @@ import {
   recordUsage,
   settleReleasedTakeoverCards,
   teamChatRunFromOwner,
+  trustedChannelWordsSinceReply,
 } from "@rakazo/db";
 import { enrichLogContext, getLogger } from "@rakazo/logging";
 import { formatAgentEnvironmentInstruction } from "./agent-environment.js";
@@ -1352,6 +1353,15 @@ export function createRunExecutor(executorDeps: ExecutorDeps) {
           messagingChannelRun: nonOwnerChatRun,
           sourceMessage,
           connectedPlugins,
+          // A link a family member texted opens like one the owner typed.
+          trustedChannelWords:
+            trustedChannelRun && run.sourceMessageId
+              ? await trustedChannelWordsSinceReply(deps.prisma, {
+                  threadId: run.threadId,
+                  channelId: channelId!,
+                  sourceMessageId: run.sourceMessageId,
+                })
+              : undefined,
         });
         // Outbound destinations this run may reach without asking. See outboundSiteGate and
         // connectorReadRequiresApproval; approvals from earlier attempts are read back from effects.

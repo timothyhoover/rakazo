@@ -4,6 +4,7 @@ import {
   isTrustedMessagingChannel,
   provisionMessagingIdentity,
   redeemMessagingLinkCode,
+  trustedChannelWordsSinceReply,
 } from "./messaging.js";
 
 describe("provisionMessagingIdentity", () => {
@@ -333,5 +334,47 @@ describe("isTrustedMessagingChannel", () => {
 
   it("distrusts a group with no known members", async () => {
     expect(await isTrustedMessagingChannel(prismaFor([], []), "ch-1", "owner")).toBe(false);
+  });
+});
+
+describe("trustedChannelWordsSinceReply", () => {
+  it("joins what the group said since the bot's last reply, oldest first", async () => {
+    const findMany = vi.fn(async () => [
+      { blocks: [{ kind: "channel_message", channelId: "ch-1", text: "Can we budget for this?" }] },
+      { blocks: [{ kind: "text", text: "typed in the app" }] },
+      { blocks: [{ kind: "channel_message", channelId: "ch-2", text: "another group" }] },
+      { blocks: [{ kind: "channel_message", channelId: "ch-1", text: "https://a.example/d/abc" }] },
+    ]);
+    const prisma = {
+      message: {
+        findUnique: vi.fn(async () => ({ seq: 12 })),
+        findFirst: vi.fn(async () => ({ seq: 9 })),
+        findMany,
+      },
+    } as unknown as PrismaClient;
+    const words = await trustedChannelWordsSinceReply(prisma, {
+      threadId: "t-1",
+      channelId: "ch-1",
+      sourceMessageId: "m-12",
+    });
+    expect(words).toBe("https://a.example/d/abc\nCan we budget for this?");
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { threadId: "t-1", role: "user", seq: { gt: 9, lte: 12 } },
+      }),
+    );
+  });
+
+  it("is empty when the source message is gone", async () => {
+    const prisma = {
+      message: { findUnique: vi.fn(async () => null) },
+    } as unknown as PrismaClient;
+    expect(
+      await trustedChannelWordsSinceReply(prisma, {
+        threadId: "t-1",
+        channelId: "ch-1",
+        sourceMessageId: "m-12",
+      }),
+    ).toBe("");
   });
 });

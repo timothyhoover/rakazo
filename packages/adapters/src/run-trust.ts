@@ -64,6 +64,8 @@ export function createRunTrustLoaders(
     messagingChannelRun: boolean;
     sourceMessage: { role: string; blocks: unknown } | null;
     connectedPlugins: readonly { provider: string }[];
+    /** In a group whose members are all the owner's own: what they said since the bot last replied. */
+    trustedChannelWords?: string;
   },
 ) {
   const {
@@ -75,6 +77,7 @@ export function createRunTrustLoaders(
     messagingChannelRun,
     sourceMessage,
     connectedPlugins,
+    trustedChannelWords,
   } = input;
   let approvalRulesPromise: Promise<ActionApprovalRule[]> | undefined;
   const loadApprovalRules = () => {
@@ -106,11 +109,13 @@ export function createRunTrustLoaders(
     return autoReviewPreferencePromise;
   };
   // The owner's own words for this run: the message they sent, or the instructions of the
-  // routine that started it. Never a bot, channel or webhook message, or a tool result.
+  // routine that started it. Never a bot, channel or webhook message, or a tool result, except in
+  // a group whose members are all the owner's own, where what they said counts as the owner's.
   // These name the sites a run is given, and are all Auto Review sees of a new site's run.
   let ownerWordsPromise: Promise<string> | undefined;
   const loadOwnerWords = () => {
     ownerWordsPromise ??= (async () => {
+      if (trustedChannelWords) return trustedChannelWords;
       if (ownerStartedRun && !messagingChannelRun && sourceMessage?.role === "user") {
         return ((sourceMessage.blocks ?? []) as MessageBlock[])
           .flatMap((block) => (block.kind === "text" ? [block.text] : []))

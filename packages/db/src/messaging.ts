@@ -1,4 +1,5 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
+import type { MessageBlock } from "@rakazo/contracts";
 import { displayName } from "@rakazo/core";
 import type { SignupPolicyEnv } from "./bootstrap-user.js";
 import { bootstrapUserSpace } from "./bootstrap-user.js";
@@ -227,6 +228,45 @@ export async function findTrustedMessagingChannelForBot(
     }
   }
   return null;
+}
+
+/**
+ * What a trusted group's members said in the burst a run answers: their messages after the
+ * thread's last bot reply, up to and including the run's source message. A link and the question
+ * about it often arrive as two texts, so the source message alone can miss the link.
+ */
+export async function trustedChannelWordsSinceReply(
+  prisma: PrismaClient,
+  input: { threadId: string; channelId: string; sourceMessageId: string },
+): Promise<string> {
+  const source = await prisma.message.findUnique({
+    where: { id: input.sourceMessageId },
+    select: { seq: true },
+  });
+  if (!source) return "";
+  const lastReply = await prisma.message.findFirst({
+    where: { threadId: input.threadId, role: "bot", seq: { lt: source.seq } },
+    orderBy: { seq: "desc" },
+    select: { seq: true },
+  });
+  const messages = await prisma.message.findMany({
+    where: {
+      threadId: input.threadId,
+      role: "user",
+      seq: { gt: lastReply?.seq ?? -1, lte: source.seq },
+    },
+    orderBy: { seq: "desc" },
+    take: 20,
+    select: { blocks: true },
+  });
+  return messages
+    .reverse()
+    .flatMap(({ blocks }) =>
+      ((blocks ?? []) as MessageBlock[]).flatMap((block) =>
+        block.kind === "channel_message" && block.channelId === input.channelId ? [block.text] : [],
+      ),
+    )
+    .join("\n");
 }
 
 export const MESSAGING_LINK_CODE_TTL_MS = 10 * 60 * 1000;
